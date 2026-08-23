@@ -1,21 +1,21 @@
 #include <Arduino.h>
 #include "user_config.h"
-#include "lvgl_port.h"
-#include "i2c_bsp.h"
-#include "lcd_bl_bsp/lcd_bl_pwm_bsp.h"
+#include "bsp/lvgl_port.h"
+#include "bsp/i2c_bsp.h"
+#include "bsp/lcd_bl_pwm_bsp.h"
 #include "config.h"
 #include "net.h"
-#include "ui.h"
+#include "ui/ui.h"
 #include "power.h"
 #include "rtc.h"
 
 void setup() {
-  i2c_master_Init();
+  i2c_master_init();
   power_begin();
   Serial.begin(115200);
   Serial.setTxTimeoutMs(0);
   lvgl_port_init();
-  lcd_bl_pwm_bsp_init(LCD_PWM_MODE_255);
+  lcd_bl_pwm_bsp_init(255);
   config_begin();
   power_relatch();
   if (lvgl_port_lock(-1)) {

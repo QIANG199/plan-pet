@@ -4,7 +4,7 @@
 #include "freertos/task.h"
 #include <Arduino.h>
 #include "HWCDC.h"
-#include "lcd_bl_bsp/lcd_bl_pwm_bsp.h"
+#include "bsp/lcd_bl_pwm_bsp.h"
 
 static const int PIN_VBAT = 4;
 static const int PIN_PWR = 16;
@@ -47,7 +47,7 @@ static bool latch_on() {
 }
 
 static void latch_off() {
-  setUpduty(LCD_PWM_MODE_0);
+  lcd_bl_set_brightness(0);
   tca_write(0x01, 0x80);
   railHeld = false;
 }

@@ -1,7 +1,7 @@
 #include "net.h"
 #include "config.h"
-#include "ui.h"
-#include "lvgl_port.h"
+#include "ui/ui.h"
+#include "bsp/lvgl_port.h"
 #include "rtc.h"
 #include <Network.h>
 #include <WiFi.h>

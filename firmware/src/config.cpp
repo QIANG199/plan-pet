@@ -1,7 +1,7 @@
 #include "config.h"
 #include "net.h"
-#include "ui.h"
-#include "lcd_bl_bsp/lcd_bl_pwm_bsp.h"
+#include "ui/ui.h"
+#include "bsp/lcd_bl_pwm_bsp.h"
 #include <Preferences.h>
 #include "secrets.h"
 
@@ -13,7 +13,7 @@ static uint8_t bright = 255;
 static String lineBuf;
 
 static void applyBright() {
-  setUpduty((uint16_t)(255 - bright));
+  lcd_bl_set_brightness(bright);
 }
 
 static void load() {

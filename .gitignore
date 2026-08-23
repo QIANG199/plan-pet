@@ -9,3 +9,4 @@ firmware/lib/lvgl/
 .idea/
 .workbuddy/
 **/__pycache__/
+.zcode/

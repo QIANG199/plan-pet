@@ -13,7 +13,7 @@ from pathlib import Path
 
 from PIL import Image, ImageSequence
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 GIF_DIR = Path(
     os.environ.get(
         "CLAWD_GIF_DIR",
