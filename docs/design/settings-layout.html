@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ESP32 桌面额度面板 · 设置页设计稿 v1</title>
+<title>ESP32 桌面额度面板 · 设置页设计稿 v1.1</title>
 <style>
 :root{
   --page-bg:#f2f4f7; --card:#ffffff; --ink:#1c2430; --ink2:#5a6575; --ink3:#8a93a3;
@@ -160,8 +160,8 @@ figcaption b{color:var(--ink);font-weight:500}
 <div class="wrap">
 <h1>设置页设计稿（触屏配网）</h1>
 <p class="meta">
-真机 1:1 · 640×172 · 深浅双主题 · <b>BOOT 双击进入</b> · v1（2026-08-23）<br>
-配色沿用固件实际调色板：深色 = 纯黑卡片 + <span class="px">#2a303c</span> 描边（与桌宠烤帧背景一致）；浅色 = <span class="px">#e9edf2</span> 底 + 白卡。中文标签依赖 LVGL 内置 simsun_16_cjk 字体（见备注）。
+真机 1:1 · 640×172 · 深浅双主题 · <b>BOOT 双击进入</b> · v1.1（2026-08-23，按钮按实机加大，规格表为准）<br>
+配色沿用固件实际调色板：深色 = 纯黑卡片 + <span class="px">#2a303c</span> 描边（与桌宠烤帧背景一致）；浅色 = <span class="px">#e9edf2</span> 底 + 白卡。中文标签使用项目生成字体 font_cn_16（见备注）。
 </p>
 
 <div class="devices">
@@ -284,22 +284,22 @@ figcaption b{color:var(--ink);font-weight:500}
   <h2>规格</h2>
   <div class="grid">
     <div class="panel">
-      <h3>主页面布局（px）</h3>
+      <h3>主页面布局（px，v1.1 实机值）</h3>
       <table>
         <tr><td>屏幕</td><td>640×172，外边距 6，卡间距 8（与桌面一致）</td></tr>
-        <tr><td>标题栏</td><td>高 24：返回胶囊 46×22 ｜ 标题 12px ｜ 右侧连接点+SSID 10px</td></tr>
-        <tr><td>左卡 WiFi</td><td class="px">368×130：标题行 20（「WiFi 网络」+ 重新扫描胶囊）+ 4×24 列表（可滚动，隔行不分组）</td></tr>
+        <tr><td>标题栏</td><td>高 30：返回胶囊 66×26（外扩 4px 点击区）｜ 标题 16px ｜ 右侧连接点+SSID 12px</td></tr>
+        <tr><td>左卡 WiFi</td><td class="px">368×126：标题行 24（「WiFi 网络」+ 重新扫描胶囊 100×24，外扩 4px）+ 26px 列表行（可滚动，约 3 行可见）</td></tr>
         <tr><td>网络行</td><td class="px">SSID 11px 省略号 ｜ 信号 4 条（3/5/7/9px）｜ 🔒 ｜ 当前网绿点 ● 已连接</td></tr>
-        <tr><td>右卡服务器</td><td class="px">258×130：主机/端口/令牌 3×24 行 + 保存按钮 24（满宽，绿底白字）</td></tr>
-        <tr><td>设置行</td><td>键 10px ink2 ｜ 值 11px ink 右对齐省略 ｜ 令牌掩码 ••••，未设显示「未设置」</td></tr>
+        <tr><td>右卡服务器</td><td class="px">258×126：主机/端口/令牌 3×26 行 + 保存按钮 28（满宽，绿底白字）</td></tr>
+        <tr><td>设置行</td><td>键 16px cjk ink2 ｜ 值 12px ink 右对齐省略 ｜ 令牌掩码 ••••，未设显示「未设置」</td></tr>
       </table>
     </div>
     <div class="panel">
-      <h3>键盘页布局（px）</h3>
+      <h3>键盘页布局（px，v1.1 实机值）</h3>
       <table>
-        <tr><td>顶栏</td><td class="px">高 24：✕ 24×22 ｜ SSID/字段名 11px ｜ 眼睛 24×22 ｜ 连接/完成胶囊（绿）</td></tr>
-        <tr><td>输入框</td><td class="px">高 24 圆角 6：密码圆点 12px ｜ 光标 1×12 绿色闪烁 ｜ 错误红边+右移错误文案 10px</td></tr>
-        <tr><td>键盘</td><td class="px">4 行 × 行高 ~27，键距 3，键圆角 5；字母 11 行（10 字母+宽1.5功能），第 4 行 空格2.5+符号1.5+确认2</td></tr>
+        <tr><td>顶栏</td><td class="px">高 30：✕ 34×26 ｜ 字段名 11px ｜ 眼睛 36×26 ｜ 连接/完成胶囊 76×26（绿）；✕/眼睛/确认外扩 5px 点击区</td></tr>
+        <tr><td>输入框</td><td class="px">高 26 圆角 6：密码圆点 ｜ 光标 1px 绿色闪烁 ｜ 错误红边+右移错误文案</td></tr>
+        <tr><td>键盘</td><td class="px">4 行 × 行高 ~23，键距 3，键圆角 5；字母 11 行（10 字母+宽1.5功能），第 4 行 空格2.5+符号1.5+确认2</td></tr>
         <tr><td>面板切换</td><td>abc ⇄ 123 ⇄ #+=（LVGL keyboard 三套 map），⇧ 大写锁定变高亮</td></tr>
       </table>
     </div>
@@ -319,13 +319,13 @@ figcaption b{color:var(--ink);font-weight:500}
       <table>
         <tr><td>深色</td><td class="px">底 #000000｜卡 #000000 + 边 #2a303c｜墨 #e8ecf3｜次 #9aa3b2｜强调绿 #22c55e</td></tr>
         <tr><td>浅色</td><td class="px">底 #e9edf2｜卡 #ffffff｜墨 #1c2430｜次 #5a6575</td></tr>
-        <tr><td>字体</td><td>拉丁/数字 montserrat 12/14；中文标签需启用 LV_FONT_SIMSUN_16_CJK（10-12px 中文可用拉丁字号渲染时退回英文标签）</td></tr>
+        <tr><td>字体</td><td>拉丁/数字 montserrat 12/14；中文用项目生成字体 font_cn_16（等线 16px 子集，ASCII + 项目用字）</td></tr>
         <tr><td>主题联动</td><td>设置页跟随深/浅主题即时切换；BOOT 短按换肤在设置页内同样生效</td></tr>
       </table>
     </div>
   </div>
   <div class="note">
-    <b>备注</b>：① 键盘纵向空间紧（24+24+4×27+间距 ≈ 172），实机如挤压可砍第 4 行、把「连接」并入顶栏；② simsun_16_cjk 约增 500KB flash，当前余量约 800KB，超限时中文标签回退英文（WiFi / Host / Port / Token / Save / Back）；③ 扫描在 STA 连接态做会短暂跳信道，属正常现象。
+    <b>备注</b>：① v1.1 起小控件均带 +4~5px 隐形扩展点击区，页面示意图为早期比例、尺寸以规格表为准；② 中文渲染依赖 <b>font_cn_16</b>（约 86KB，等线子集）：新增中文文案必须用 lv_font_conv 重新生成（命令见 firmware/src/ui/font_cn_16.h），否则缺字显示「口」；③ 扫描在 STA 连接态做会短暂跳信道，属正常现象；④ 卡片禁用 clip_corner（圆角裁剪 + 列表溢出曾触发渲染风暴导致看门狗复位），列表用滚动收纳溢出。
   </div>
 </div>
 </div>

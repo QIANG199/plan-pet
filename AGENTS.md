@@ -42,10 +42,11 @@ python firmware/tools/bake_pet.py
 
 - **GPIO0（BOOT 键）是 strapping 脚**：重启必须等松手确认高电平后才执行，否则进 USB 下载模式（`power.cpp` 的 `request_reboot` 已处理）。
 - **RESET 键接 EN 硬复位线，固件读不到**——"软件拦截 RST"类需求直接否掉。
-- 关机流程：长按 PWR 3 秒 → 进度条 → 3·2·1 倒计时 → 断电；倒计时期间再按 PWR 取消；USB 插入永不关机。
+- 关机流程：长按 PWR 3 秒 → 圆形进度环 → 3·2·1 倒计时 → 断电；倒计时期间再按 PWR 取消；USB 插入永不关机。开机先播桌宠动画（`ui_boot`），首批快照到达后淡入桌面。
 - `firmware/lib/lvgl` 是指向微雪 Demo 的目录联接，**不进 Git**——本机没有它就编不了固件，这不是仓库缺陷。
 - `include/secrets.h`、`src/pet_frames.bin`、`src/pet_blob.S` 都是 gitignore 的生成物/本机配置，别提交。LVGL 配置只有 `include/lv_conf.h` 一份。
-- 中文 UI 依赖 `LV_FONT_SIMSUN_16_CJK`；flash 已用约 90%，加资源前先看余量。
+- 中文 UI 用项目生成字体 `ui/font_cn_16.c`（等线 16px、ASCII + 项目用字的子集，约 86KB）；**新增中文文案必须用 lv_font_conv 重新生成**（命令见 `font_cn_16.h`），否则缺字显示为「口」。flash 已用约 88%，加资源前先看余量。
+- 电量是电压估算（板子没有电量计芯片）：充电时百分比冻结在插线瞬间的读数，拔线后 EMA 平滑恢复——别给充电中的读数加固定补偿（已两次踩坑）。
 - LVGL 跑在 core 0 专用任务，跨任务碰控件必须 `lvgl_port_lock`；power 任务只发 volatile 状态快照不直接调 LVGL，`latch_off` 只在 power 任务执行（避免与 RTC 的 I2C 竞态）。
 - **勿在卡片上用 `clip_corner` 装溢出子对象**：本机是全屏渲染模式，圆角裁剪会让软件渲染器为每个绘制块分配 layer 缓冲，对象一多就打爆 64KB LVGL 内存池并陷入重试风暴 → LVGL 任务饿死 IDLE0 → 任务看门狗复位（设置页曾因此必崩）。列表一律用可滚动容器，卡片用 `ui_settings.cpp` 的 `style_card_flat`。
 
@@ -54,4 +55,4 @@ python firmware/tools/bake_pet.py
 - 文档、术语、注释以中文为主；提交信息用英文 conventional commits（`feat(scope): ...`）。
 - 服务端纯 Node 标准库 + `bonjour-service`，不引框架；新增依赖需有充分理由。
 - `.env` 解析唯一实现在 `server/src/lib/dotenv.js`（server 与 hooks 共用）；改键名先看 `env.js` 和 `common.js` 两处消费。
-- 串口命令清单以 `firmware/README.md` 为准（WIFI/PASS/TOKEN/HOST/PET/BRIGHT/OFF/REBOOT/SHOW）。
+- 串口命令清单以 `firmware/README.md` 为准（WIFI/PASS/TOKEN/HOST/PORT/PET/BRIGHT/OFF/REBOOT/SETUP/SHOW）。
