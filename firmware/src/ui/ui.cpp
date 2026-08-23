@@ -2,6 +2,7 @@
 #include "ui_internal.h"
 #include "config.h"
 #include "power.h"
+#include "ui/ui_settings.h"
 #include "bsp/lvgl_port.h"
 #include "lvgl.h"
 #include <Arduino.h>
@@ -15,6 +16,8 @@ lv_obj_t *glmK2, *glmR2, *glmP2, *glmBar2;
 lv_obj_t *curTitle, *curDot, *curReset;
 lv_obj_t *curK1, *curP1, *curBar1, *curK2, *curP2, *curBar2;
 static lv_obj_t *ovlCap, *ovlBig, *ovlBar;
+static lv_obj_t *setupHint;
+static bool hintShown;
 
 static bool wifiOn = true;
 
@@ -48,6 +51,7 @@ static void applyTheme() {
   lv_obj_set_style_bg_color(curBar2, p.track, LV_PART_MAIN);
   lv_obj_set_style_text_color(ovlCap, p.ink2, 0);
   lv_obj_set_style_bg_color(ovlBar, p.track, LV_PART_MAIN);
+  lv_obj_set_style_text_color(setupHint, p.ink2, 0);
   ui_pet_show_frame();
   ui_set_wifi(wifiOn);
 }
@@ -62,6 +66,10 @@ static void onTheme(lv_event_t *e) {
 static void onPet(lv_event_t *e) {
   LV_UNUSED(e);
   ui_pet_poke();
+}
+
+static void text_set_opa(void *obj, int32_t v) {
+  lv_obj_set_style_text_opa((lv_obj_t *)obj, (lv_opa_t)v, 0);
 }
 
 static void remainText(time_t at, char *buf, size_t n) {
@@ -157,6 +165,23 @@ void ui_create() {
   lv_obj_add_flag(ovlCap, LV_OBJ_FLAG_HIDDEN);
   lv_obj_add_flag(ovlBig, LV_OBJ_FLAG_HIDDEN);
   lv_obj_add_flag(ovlBar, LV_OBJ_FLAG_HIDDEN);
+
+  /* First-boot hint until WiFi gets configured (BOOT double-click = setup). */
+  setupHint = ui_mk_lbl(statusCard, &lv_font_montserrat_12, lv_color_white());
+  lv_obj_set_width(setupHint, lv_pct(100));
+  lv_obj_set_style_text_align(setupHint, LV_TEXT_ALIGN_CENTER, 0);
+  lv_label_set_text(setupHint, "Setup:\nBOOT x2");
+  lv_obj_align(setupHint, LV_ALIGN_TOP_MID, 0, 56);
+  lv_obj_add_flag(setupHint, LV_OBJ_FLAG_HIDDEN);
+  lv_anim_t blink;
+  lv_anim_init(&blink);
+  lv_anim_set_var(&blink, setupHint);
+  lv_anim_set_values(&blink, LV_OPA_30, LV_OPA_COVER);
+  lv_anim_set_duration(&blink, 700);
+  lv_anim_set_reverse_duration(&blink, 700);
+  lv_anim_set_repeat_count(&blink, LV_ANIM_REPEAT_INFINITE);
+  lv_anim_set_exec_cb(&blink, text_set_opa);
+  lv_anim_start(&blink);
 
   planCard = lv_obj_create(uiScr);
   lv_obj_set_pos(planCard, 94, 6);
@@ -320,6 +345,7 @@ void ui_toggle_theme() {
   if (power_phase() != POWER_NORMAL) return;
   config_set_dark(!config_dark());
   applyTheme();
+  if (ui_settings_active()) ui_settings_refresh_theme();
 }
 
 void ui_poll_power() {
@@ -333,6 +359,14 @@ void ui_poll_power() {
     }
     lastPhase = phase;
   }
+
+  bool needHint = config_wifi_ssid().isEmpty() && phase == POWER_NORMAL;
+  if (needHint != hintShown) {
+    hintShown = needHint;
+    if (needHint) lv_obj_clear_flag(setupHint, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(setupHint, LV_OBJ_FLAG_HIDDEN);
+  }
+
   if (phase == POWER_NORMAL) return;
 
   char buf[8];

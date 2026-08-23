@@ -138,6 +138,27 @@ void config_set_dark(bool next) {
   prefs.putBool("dark", dark);
 }
 
+void config_set_wifi(const String &newSsid, const String &newPass) {
+  ssid = newSsid;
+  pass = newPass;
+  save();
+}
+
+void config_set_host(const String &newHost) {
+  host = newHost;
+  save();
+}
+
+void config_set_token(const String &newToken) {
+  token = newToken;
+  save();
+}
+
+void config_set_port(uint16_t newPort) {
+  port = newPort;
+  save();
+}
+
 uint8_t config_bright() { return bright; }
 
 void config_set_bright(uint8_t v) {

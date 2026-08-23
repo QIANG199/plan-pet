@@ -6,6 +6,7 @@
 #include "config.h"
 #include "net.h"
 #include "ui/ui.h"
+#include "ui/ui_settings.h"
 #include "power.h"
 #include "rtc.h"
 
@@ -65,9 +66,11 @@ void loop() {
       if (pendingReq == KEY_REQ_THEME) {
         ui_toggle_theme();
         pendingReq = 0;
-      } else if (pendingReq != KEY_REQ_NONE) {
-        pendingReq = 0; /* settings request: handled once the settings page lands */
+      } else if (pendingReq == KEY_REQ_SETTINGS) {
+        ui_settings_open();
+        pendingReq = 0;
       }
+      ui_settings_poll();
       ui_poll_power();
       lvgl_port_unlock();
     }
