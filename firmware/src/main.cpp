@@ -7,6 +7,7 @@
 #include "net.h"
 #include "ui/ui.h"
 #include "ui/ui_settings.h"
+#include "ui/ui_boot.h"
 #include "power.h"
 #include "rtc.h"
 
@@ -21,6 +22,7 @@ void setup() {
   power_relatch();
   if (lvgl_port_lock(-1)) {
     ui_create();
+    ui_boot_begin();
     bool charging = false;
     int pct = 0;
     power_read(&charging, &pct);
@@ -63,7 +65,9 @@ void loop() {
     lastKeyUi = now;
     if (!pendingReq) pendingReq = power_take_request();
     if (lvgl_port_lock(20)) {
-      if (pendingReq == KEY_REQ_THEME) {
+      if (ui_boot_active()) {
+        pendingReq = KEY_REQ_NONE; /* key gestures wait until the splash is gone */
+      } else if (pendingReq == KEY_REQ_THEME) {
         ui_toggle_theme();
         pendingReq = 0;
       } else if (pendingReq == KEY_REQ_SETTINGS) {
@@ -71,6 +75,7 @@ void loop() {
         pendingReq = 0;
       }
       ui_settings_poll();
+      ui_boot_poll();
       ui_poll_power();
       lvgl_port_unlock();
     }
