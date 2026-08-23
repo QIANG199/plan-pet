@@ -1,5 +1,6 @@
 #include "ui_settings.h"
 #include "ui_internal.h"
+#include "font_cn_16.h"
 #include "config.h"
 #include "net.h"
 #include "bsp/lvgl_port.h"
@@ -37,7 +38,7 @@ static char ssidBuf[MAX_NETS][33];
 static int8_t ssidRssi[MAX_NETS];
 static int ssidCount;
 
-static const lv_font_t *cjk() { return &lv_font_simsun_16_cjk; }
+static const lv_font_t *cjk() { return &font_cn_16; }
 
 static void style_hit(lv_obj_t *o) {
   lv_obj_add_flag(o, LV_OBJ_FLAG_CLICKABLE);
