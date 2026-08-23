@@ -1,8 +1,10 @@
 #include "config.h"
 #include "net.h"
 #include "ui/ui.h"
+#include "ui/ui_settings.h"
 #include "power.h"
 #include "bsp/lcd_bl_pwm_bsp.h"
+#include "bsp/lvgl_port.h"
 #include <Preferences.h>
 #include "secrets.h"
 
@@ -88,6 +90,21 @@ static void handleLine(String line) {
     Serial.println("ok reboot");
     delay(50);
     ESP.restart();
+  } else if (cmd == "SETUP") {
+    /* Dev shortcut: open the settings page over serial; "SETUP EDIT <1-3>"
+       opens a field editor, "SETUP CLOSE" leaves the page. */
+    if (lvgl_port_lock(200)) {
+      ui_settings_open();
+      if (arg.length()) {
+        int sp2 = arg.indexOf(' ');
+        String sub = sp2 < 0 ? arg : arg.substring(0, sp2);
+        String val = sp2 < 0 ? "" : arg.substring(sp2 + 1);
+        if (sub == "EDIT") ui_settings_diag_editor(val.toInt());
+        else if (sub == "CLOSE") ui_settings_close();
+      }
+      lvgl_port_unlock();
+    }
+    Serial.println("ok setup");
   } else if (cmd == "SHOW") {
     printCfg();
   } else if (cmd == "HELP") {

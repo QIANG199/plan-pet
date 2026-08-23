@@ -47,6 +47,7 @@ python firmware/tools/bake_pet.py
 - `include/secrets.h`、`src/pet_frames.bin`、`src/pet_blob.S` 都是 gitignore 的生成物/本机配置，别提交。LVGL 配置只有 `include/lv_conf.h` 一份。
 - 中文 UI 依赖 `LV_FONT_SIMSUN_16_CJK`；flash 已用约 90%，加资源前先看余量。
 - LVGL 跑在 core 0 专用任务，跨任务碰控件必须 `lvgl_port_lock`；power 任务只发 volatile 状态快照不直接调 LVGL，`latch_off` 只在 power 任务执行（避免与 RTC 的 I2C 竞态）。
+- **勿在卡片上用 `clip_corner` 装溢出子对象**：本机是全屏渲染模式，圆角裁剪会让软件渲染器为每个绘制块分配 layer 缓冲，对象一多就打爆 64KB LVGL 内存池并陷入重试风暴 → LVGL 任务饿死 IDLE0 → 任务看门狗复位（设置页曾因此必崩）。列表一律用可滚动容器，卡片用 `ui_settings.cpp` 的 `style_card_flat`。
 
 ## 约定
 

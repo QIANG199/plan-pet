@@ -8,3 +8,6 @@ void ui_settings_close();
 bool ui_settings_active();
 void ui_settings_poll();
 void ui_settings_refresh_theme();
+/* Diagnostic (serial SETUP command): open the editor for field
+ * 1=host 2=port 3=token. No-op when the page is closed. */
+void ui_settings_diag_editor(int field);

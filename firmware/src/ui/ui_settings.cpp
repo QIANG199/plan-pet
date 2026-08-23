@@ -45,7 +45,12 @@ static void style_hit(lv_obj_t *o) {
   lv_obj_set_style_bg_opa(o, LV_OPA_COVER, 0);
   lv_obj_set_style_radius(o, 6, 0);
   lv_obj_set_style_border_width(o, 0, 0);
+  /* The theme's button shadows force per-button layer buffers on every
+   * full-screen refresh; with 50+ buttons that starves the LVGL task until
+   * the task watchdog reboots the chip. No shadows here. */
   lv_obj_set_style_shadow_width(o, 0, 0);
+  lv_obj_set_style_outline_width(o, 0, 0);
+  lv_obj_set_style_outline_pad(o, 0, 0);
   lv_obj_set_style_pad_all(o, 0, 0);
 }
 
@@ -55,8 +60,28 @@ static void style_pill(lv_obj_t *o) {
   lv_obj_set_style_pad_hor(o, 8, 0);
 }
 
+/* Flat card: like ui_style_card but WITHOUT clip_corner. Rounded-corner
+ * clipping of overflowing children forces per-draw layer buffers in the SW
+ * renderer and, with a long network list, starves the LVGL task until the
+ * task watchdog reboots the chip. The list scrolls instead. */
+static void style_card_flat(lv_obj_t *o) {
+  const UiPalette &p = ui_palette();
+  ui_no_scroll(o);
+  lv_obj_set_style_bg_color(o, p.card, 0);
+  lv_obj_set_style_bg_opa(o, LV_OPA_COVER, 0);
+  lv_obj_set_style_radius(o, 8, 0);
+  if (config_dark()) {
+    lv_obj_set_style_border_width(o, 1, 0);
+    lv_obj_set_style_border_color(o, p.track, 0);
+    lv_obj_set_style_border_opa(o, LV_OPA_COVER, 0);
+  } else {
+    lv_obj_set_style_border_width(o, 0, 0);
+  }
+}
+
 static void start_scan() {
   scanning = true;
+  Serial.println("[set] scan start");
   WiFi.scanNetworks(true);
   lv_obj_set_style_text_color(rescanLbl, UI_WARN, 0);
 }
@@ -89,6 +114,7 @@ static void open_editor(EditField f) {
   editField = f;
   connState = CS_IDLE;
   view = SV_EDIT;
+  Serial.printf("[set] editor field=%d\n", (int)f);
 
   lv_textarea_set_password_mode(edTa, f == EF_PASSWORD);
   lv_textarea_set_one_line(edTa, true);
@@ -122,6 +148,7 @@ static void open_editor(EditField f) {
 }
 
 static void close_editor() {
+  Serial.println("[set] editor close");
   lv_obj_add_flag(editPanel, LV_OBJ_FLAG_HIDDEN);
   view = SV_MAIN;
   refresh_rows();
@@ -294,7 +321,7 @@ static void build_main(lv_obj_t *scr) {
 
   /* WiFi card */
   lv_obj_t *wifiCard = lv_obj_create(cols);
-  ui_style_card(wifiCard);
+  style_card_flat(wifiCard);
   lv_obj_set_size(wifiCard, 368, 136);
   lv_obj_set_flex_flow(wifiCard, LV_FLEX_FLOW_COLUMN);
   lv_obj_set_style_pad_all(wifiCard, 6, 0);
@@ -314,7 +341,11 @@ static void build_main(lv_obj_t *scr) {
   lv_obj_center(rescanLbl);
 
   netList = lv_obj_create(wifiCard);
-  ui_no_scroll(netList);
+  /* Scrollable list: overflow is handled by scrolling, never by clipping
+   * children at the card edge (see style_card_flat). */
+  lv_obj_set_scrollbar_mode(netList, LV_SCROLLBAR_MODE_OFF);
+  lv_obj_set_style_outline_width(netList, 0, 0);
+  lv_obj_set_style_min_height(netList, 0, 0);
   lv_obj_set_width(netList, lv_pct(100));
   lv_obj_set_flex_grow(netList, 1);
   lv_obj_set_flex_flow(netList, LV_FLEX_FLOW_COLUMN);
@@ -325,7 +356,7 @@ static void build_main(lv_obj_t *scr) {
 
   /* Server card */
   lv_obj_t *srvCard = lv_obj_create(cols);
-  ui_style_card(srvCard);
+  style_card_flat(srvCard);
   lv_obj_set_size(srvCard, 258, 136);
   lv_obj_set_flex_flow(srvCard, LV_FLEX_FLOW_COLUMN);
   lv_obj_set_style_pad_all(srvCard, 8, 0);
@@ -529,6 +560,7 @@ static void take_scan() {
 
 void ui_settings_open() {
   if (view != SV_CLOSED) return;
+  Serial.println("[set] open");
   if (!settingsScr) {
     settingsScr = lv_obj_create(nullptr);
     lv_obj_set_style_pad_all(settingsScr, 6, 0);
@@ -548,6 +580,7 @@ void ui_settings_open() {
 
 void ui_settings_close() {
   if (view == SV_CLOSED) return;
+  Serial.println("[set] close");
   view = SV_CLOSED;
   connState = CS_IDLE;
   lv_obj_add_flag(editPanel, LV_OBJ_FLAG_HIDDEN);
@@ -556,6 +589,13 @@ void ui_settings_close() {
 }
 
 bool ui_settings_active() { return view != SV_CLOSED; }
+
+void ui_settings_diag_editor(int field) {
+  if (view == SV_CLOSED) return;
+  if (field == 1) open_editor(EF_HOST);
+  else if (field == 2) open_editor(EF_PORT);
+  else if (field == 3) open_editor(EF_TOKEN);
+}
 
 void ui_settings_poll() {
   if (view == SV_CLOSED) return;

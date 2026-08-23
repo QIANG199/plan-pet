@@ -134,6 +134,7 @@ static void push_request(uint8_t r) {
 static void request_reboot() {
   /* GPIO0 is a strapping pin: restart only once it reads high again,
    * otherwise the chip would land in the USB download bootloader. */
+  Serial.println("[pwr] reboot requested");
   for (int i = 0; i < 10 && digitalRead(PIN_BOOT) == LOW; i++) delay(10);
   if (digitalRead(PIN_BOOT) == LOW) return;
   Serial.println("reboot");
