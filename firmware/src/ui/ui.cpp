@@ -15,7 +15,7 @@ lv_obj_t *glmTitle, *glmDot, *glmK1, *glmR1, *glmP1, *glmBar1;
 lv_obj_t *glmK2, *glmR2, *glmP2, *glmBar2;
 lv_obj_t *curTitle, *curDot, *curReset;
 lv_obj_t *curK1, *curP1, *curBar1, *curK2, *curP2, *curBar2;
-static lv_obj_t *ovlCap, *ovlBig, *ovlBar;
+static lv_obj_t *ovlCap, *ovlBig, *ovlRing;
 static lv_obj_t *setupHint;
 static bool hintShown;
 
@@ -50,7 +50,7 @@ static void applyTheme() {
   lv_obj_set_style_bg_color(curBar1, p.track, LV_PART_MAIN);
   lv_obj_set_style_bg_color(curBar2, p.track, LV_PART_MAIN);
   lv_obj_set_style_text_color(ovlCap, p.ink2, 0);
-  lv_obj_set_style_bg_color(ovlBar, p.track, LV_PART_MAIN);
+  lv_obj_set_style_arc_color(ovlRing, p.track, LV_PART_MAIN);
   lv_obj_set_style_text_color(setupHint, p.ink2, 0);
   ui_pet_show_frame();
   ui_set_wifi(wifiOn);
@@ -145,7 +145,7 @@ void ui_create() {
   lv_obj_add_event_cb(themeHit, onTheme, LV_EVENT_CLICKED, nullptr);
 
   /* Key-feedback overlay in the reserved mid area of the status card:
-   * caption ("OFF"/"REBOOT"), a big digit, and a hold-progress bar. */
+   * caption ("OFF"/"REBOOT"), a big digit, and a circular hold-progress ring. */
   ovlCap = ui_mk_lbl(statusCard, &lv_font_montserrat_12, lv_color_white());
   lv_obj_set_width(ovlCap, lv_pct(100));
   lv_obj_set_style_text_align(ovlCap, LV_TEXT_ALIGN_CENTER, 0);
@@ -154,17 +154,24 @@ void ui_create() {
   lv_obj_set_width(ovlBig, lv_pct(100));
   lv_obj_set_style_text_align(ovlBig, LV_TEXT_ALIGN_CENTER, 0);
   lv_obj_align(ovlBig, LV_ALIGN_TOP_MID, 0, 54);
-  ovlBar = lv_bar_create(statusCard);
-  ui_no_scroll(ovlBar);
-  lv_obj_set_size(ovlBar, 56, 4);
-  lv_obj_align(ovlBar, LV_ALIGN_TOP_MID, 0, 86);
-  lv_bar_set_range(ovlBar, 0, 1000);
-  lv_obj_set_style_radius(ovlBar, 2, 0);
-  lv_obj_set_style_radius(ovlBar, 2, LV_PART_INDICATOR);
-  lv_obj_set_style_bg_color(ovlBar, UI_WARN, LV_PART_INDICATOR);
+  ovlRing = lv_arc_create(statusCard);
+  ui_no_scroll(ovlRing);
+  lv_obj_clear_flag(ovlRing, LV_OBJ_FLAG_CLICKABLE); /* touch must not scrub it */
+  lv_obj_set_size(ovlRing, 46, 46);
+  lv_obj_align(ovlRing, LV_ALIGN_TOP_MID, 0, 58);
+  lv_arc_set_rotation(ovlRing, 270); /* start at 12 o'clock */
+  lv_arc_set_bg_angles(ovlRing, 0, 360);
+  lv_arc_set_range(ovlRing, 0, 1000);
+  lv_arc_set_value(ovlRing, 0);
+  lv_obj_set_style_arc_width(ovlRing, 4, LV_PART_MAIN);
+  lv_obj_set_style_arc_width(ovlRing, 4, LV_PART_INDICATOR);
+  lv_obj_set_style_arc_rounded(ovlRing, true, LV_PART_MAIN);
+  lv_obj_set_style_arc_rounded(ovlRing, true, LV_PART_INDICATOR);
+  lv_obj_set_style_arc_color(ovlRing, UI_WARN, LV_PART_INDICATOR);
+  lv_obj_remove_style(ovlRing, nullptr, LV_PART_KNOB); /* no knob dot */
   lv_obj_add_flag(ovlCap, LV_OBJ_FLAG_HIDDEN);
   lv_obj_add_flag(ovlBig, LV_OBJ_FLAG_HIDDEN);
-  lv_obj_add_flag(ovlBar, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_add_flag(ovlRing, LV_OBJ_FLAG_HIDDEN);
 
   /* First-boot hint until WiFi gets configured (BOOT double-click = setup). */
   setupHint = ui_mk_lbl(statusCard, &lv_font_montserrat_12, lv_color_white());
@@ -355,7 +362,7 @@ void ui_poll_power() {
     if (phase == POWER_NORMAL) {
       lv_obj_add_flag(ovlCap, LV_OBJ_FLAG_HIDDEN);
       lv_obj_add_flag(ovlBig, LV_OBJ_FLAG_HIDDEN);
-      lv_obj_add_flag(ovlBar, LV_OBJ_FLAG_HIDDEN);
+      lv_obj_add_flag(ovlRing, LV_OBJ_FLAG_HIDDEN);
     }
     lastPhase = phase;
   }
@@ -372,14 +379,14 @@ void ui_poll_power() {
   char buf[8];
   if (phase == POWER_HOLD_OFF) {
     lv_obj_clear_flag(ovlCap, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_clear_flag(ovlBar, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(ovlRing, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(ovlBig, LV_OBJ_FLAG_HIDDEN);
     lv_label_set_text(ovlCap, "OFF");
-    lv_bar_set_value(ovlBar, power_hold_permille(), LV_ANIM_OFF);
+    lv_arc_set_value(ovlRing, power_hold_permille());
   } else if (phase == POWER_COUNTDOWN) {
     lv_obj_clear_flag(ovlCap, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(ovlBig, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(ovlBar, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(ovlRing, LV_OBJ_FLAG_HIDDEN);
     lv_label_set_text(ovlCap, "OFF");
     snprintf(buf, sizeof(buf), "%u", (unsigned)power_countdown_remain());
     lv_label_set_text(ovlBig, buf);
@@ -387,7 +394,7 @@ void ui_poll_power() {
   } else { /* POWER_HOLD_REBOOT */
     lv_obj_clear_flag(ovlCap, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(ovlBig, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(ovlBar, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(ovlRing, LV_OBJ_FLAG_HIDDEN);
     lv_label_set_text(ovlCap, "REBOOT");
     snprintf(buf, sizeof(buf), "%u", (unsigned)power_reboot_remain());
     lv_label_set_text(ovlBig, buf);
