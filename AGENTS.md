@@ -43,6 +43,7 @@ python firmware/tools/bake_pet.py
 - **GPIO0（BOOT 键）是 strapping 脚**：重启必须等松手确认高电平后才执行，否则进 USB 下载模式（`power.cpp` 的 `request_reboot` 已处理）。
 - **RESET 键接 EN 硬复位线，固件读不到**——"软件拦截 RST"类需求直接否掉。
 - 关机流程：长按 PWR 3 秒 → 圆形进度环 → 3·2·1 倒计时 → 断电；倒计时期间再按 PWR 取消；USB 插入永不关机。开机先播桌宠动画（`ui_boot`），首批快照到达后淡入桌面。
+- **息屏**（`standby.*`）：桌宠 sleeping 后再等 sleepT 分钟（NVS `sleepT`，默认 5，串口 `SLEEP` 可调）→ 背光关断 + 暂停渲染 + 轮询放缓到 10s；唤醒源为触摸/BOOT 键/串口任意命令/PWR 相位/桌宠离开 sleeping。背光开关必须走 `lcd_bl_pwm_bsp_off/on`（`ledc_stop` 真关断），不要用 `lcd_bl_set_brightness(0)`——反向占空 255 每周期残留微亮脉冲。息屏 ≠ 关机，也 ≠ 桌宠 sleeping 态。
 - `firmware/lib/lvgl` 是指向微雪 Demo 的目录联接，**不进 Git**——本机没有它就编不了固件，这不是仓库缺陷。
 - `include/secrets.h`、`src/pet_frames.bin`、`src/pet_blob.S` 都是 gitignore 的生成物/本机配置，别提交。LVGL 配置只有 `include/lv_conf.h` 一份。
 - 中文 UI 用项目生成字体 `ui/font_cn_16.c`（等线 16px、ASCII + 项目用字的子集，约 86KB）；**新增中文文案必须用 lv_font_conv 重新生成**（命令见 `font_cn_16.h`），否则缺字显示为「口」。flash 已用约 88%，加资源前先看余量。
@@ -55,4 +56,4 @@ python firmware/tools/bake_pet.py
 - 文档、术语、注释以中文为主；提交信息用英文 conventional commits（`feat(scope): ...`）。
 - 服务端纯 Node 标准库 + `bonjour-service`，不引框架；新增依赖需有充分理由。
 - `.env` 解析唯一实现在 `server/src/lib/dotenv.js`（server 与 hooks 共用）；改键名先看 `env.js` 和 `common.js` 两处消费。
-- 串口命令清单以 `firmware/README.md` 为准（WIFI/PASS/TOKEN/HOST/PORT/PET/BRIGHT/OFF/REBOOT/SETUP/SHOW）。
+- 串口命令清单以 `firmware/README.md` 为准（WIFI/PASS/TOKEN/HOST/PORT/PET/BRIGHT/SLEEP/OFF/REBOOT/SETUP/SHOW）。

@@ -5,6 +5,7 @@
 #include "bsp/lcd_bl_pwm_bsp.h"
 #include "config.h"
 #include "net.h"
+#include "standby.h"
 #include "ui/ui.h"
 #include "ui/ui_settings.h"
 #include "ui/ui_boot.h"
@@ -68,15 +69,18 @@ void loop() {
       if (ui_boot_active()) {
         pendingReq = KEY_REQ_NONE; /* key gestures wait until the splash is gone */
       } else if (pendingReq == KEY_REQ_THEME) {
-        ui_toggle_theme();
+        if (standby_asleep()) standby_request_wake(); /* first tap just wakes */
+        else ui_toggle_theme();
         pendingReq = 0;
       } else if (pendingReq == KEY_REQ_SETTINGS) {
-        ui_settings_open();
+        if (standby_asleep()) standby_request_wake();
+        else ui_settings_open();
         pendingReq = 0;
       }
       ui_settings_poll();
       ui_boot_poll();
       ui_poll_power();
+      standby_poll();
       lvgl_port_unlock();
     }
   }

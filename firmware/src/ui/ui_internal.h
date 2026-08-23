@@ -21,6 +21,7 @@ lv_obj_t *ui_mk_dot(lv_obj_t *parent);
 lv_obj_t *ui_mk_row(lv_obj_t *parent, lv_obj_t **k, lv_obj_t **r, lv_obj_t **pct);
 lv_obj_t *ui_mk_block(lv_obj_t *parent);
 lv_obj_t *ui_mk_head(lv_obj_t *parent);
+void ui_dots_set_paused(bool paused); /* stop the dot breathing while blanked */
 
 /* Pet renderer (ui_pet.cpp). */
 extern lv_obj_t *petImg;

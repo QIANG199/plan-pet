@@ -17,6 +17,8 @@ struct Snapshot {
   QuotaBar autoBar;
   QuotaBar apiBar;
   time_t cycleEnd;
+  time_t srvTs;      /* server unix seconds of this snapshot */
+  time_t petSince;   /* pet lane's last state switch, unix seconds */
   String petAgent;
   String petState;
   bool glmDot;
@@ -29,3 +31,6 @@ void net_reconnect();
 void net_loop();
 bool net_wifi_up();
 const Snapshot &net_snapshot();
+uint32_t net_last_ok_ms();          /* millis() of the last parsed snapshot (boot time if none) */
+bool net_server_ok();               /* WiFi up and a snapshot parsed recently */
+void net_set_poll_ms(uint32_t ms);  /* poll cadence; 2s awake, slower while the screen sleeps */

@@ -2,6 +2,7 @@
 #include "ui_internal.h"
 #include "config.h"
 #include "power.h"
+#include "standby.h"
 #include "ui/ui_settings.h"
 #include "bsp/lvgl_port.h"
 #include "lvgl.h"
@@ -20,6 +21,9 @@ static lv_obj_t *setupHint;
 static bool hintShown;
 
 static bool wifiOn = true;
+static bool srvOn = true;
+static bool uiAsleep = false;
+static lv_obj_t *sleepScr;
 
 static void applyTheme() {
   const UiPalette &p = ui_palette();
@@ -53,7 +57,7 @@ static void applyTheme() {
   lv_obj_set_style_arc_color(ovlRing, p.track, LV_PART_MAIN);
   lv_obj_set_style_text_color(setupHint, p.ink2, 0);
   ui_pet_show_frame();
-  ui_set_wifi(wifiOn);
+  ui_set_link(wifiOn, srvOn);
 }
 
 static void onTheme(lv_event_t *e) {
@@ -70,6 +74,18 @@ static void onPet(lv_event_t *e) {
 
 static void text_set_opa(void *obj, int32_t v) {
   lv_obj_set_style_text_opa((lv_obj_t *)obj, (lv_opa_t)v, 0);
+}
+
+static void start_hint_blink() {
+  lv_anim_t blink;
+  lv_anim_init(&blink);
+  lv_anim_set_var(&blink, setupHint);
+  lv_anim_set_values(&blink, LV_OPA_30, LV_OPA_COVER);
+  lv_anim_set_duration(&blink, 700);
+  lv_anim_set_reverse_duration(&blink, 700);
+  lv_anim_set_repeat_count(&blink, LV_ANIM_REPEAT_INFINITE);
+  lv_anim_set_exec_cb(&blink, text_set_opa);
+  lv_anim_start(&blink);
 }
 
 static void remainText(time_t at, char *buf, size_t n) {
@@ -180,15 +196,7 @@ void ui_create() {
   lv_label_set_text(setupHint, "Setup:\nBOOT x2");
   lv_obj_align(setupHint, LV_ALIGN_TOP_MID, 0, 56);
   lv_obj_add_flag(setupHint, LV_OBJ_FLAG_HIDDEN);
-  lv_anim_t blink;
-  lv_anim_init(&blink);
-  lv_anim_set_var(&blink, setupHint);
-  lv_anim_set_values(&blink, LV_OPA_30, LV_OPA_COVER);
-  lv_anim_set_duration(&blink, 700);
-  lv_anim_set_reverse_duration(&blink, 700);
-  lv_anim_set_repeat_count(&blink, LV_ANIM_REPEAT_INFINITE);
-  lv_anim_set_exec_cb(&blink, text_set_opa);
-  lv_anim_start(&blink);
+  start_hint_blink();
 
   planCard = lv_obj_create(uiScr);
   lv_obj_set_pos(planCard, 94, 6);
@@ -271,6 +279,7 @@ static void setBar(lv_obj_t *bar, lv_obj_t *pctLbl, lv_obj_t *resetLbl, const Qu
 }
 
 void ui_apply(const Snapshot &s) {
+  if (uiAsleep) return; /* no redraws while the backlight is off */
   setBar(glmBar1, glmP1, glmR1, s.h5, !s.glmOk);
   setBar(glmBar2, glmP2, glmR2, s.week, !s.glmOk);
   if (!s.glmOk) lv_obj_add_flag(glmBar2, LV_OBJ_FLAG_HIDDEN);
@@ -302,18 +311,58 @@ void ui_set_pet_override(const char *state) {
   }
 }
 
-void ui_set_wifi(bool up) {
+void ui_set_link(bool up, bool srv) {
   wifiOn = up;
-  if (up) {
-    const UiPalette &p = ui_palette();
-    lv_obj_set_style_text_color(wifiLbl, p.ink2, 0);
-  } else {
+  srvOn = srv;
+  static int lastState = -1; /* 0 ok, 1 server lost, 2 wifi down */
+  int st = !up ? 2 : (!srv ? 1 : 0);
+  if (st != lastState) {
+    lastState = st;
+    Serial.printf("[link] %s\n", st == 2 ? "wifi down" : st == 1 ? "server lost" : "ok");
+  }
+  if (uiAsleep) return;
+  if (!up) {
     lv_obj_set_style_text_color(wifiLbl, UI_BAD, 0);
+  } else if (!srv) {
+    lv_obj_set_style_text_color(wifiLbl, UI_WARN, 0);
+  } else {
+    lv_obj_set_style_text_color(wifiLbl, ui_palette().ink2, 0);
   }
   lv_obj_set_style_text_opa(wifiLbl, LV_OPA_COVER, 0);
 }
 
+static void onSleepTouch(lv_event_t *e) {
+  LV_UNUSED(e);
+  standby_request_wake();
+}
+
+void ui_set_sleep(bool on) {
+  if (on == uiAsleep) return;
+  uiAsleep = on;
+  if (on) {
+    if (!sleepScr) {
+      sleepScr = lv_obj_create(nullptr);
+      lv_obj_set_style_pad_all(sleepScr, 0, 0);
+      ui_no_scroll(sleepScr);
+      lv_obj_set_style_bg_color(sleepScr, lv_color_black(), 0);
+      lv_obj_add_flag(sleepScr, LV_OBJ_FLAG_CLICKABLE);
+      lv_obj_add_event_cb(sleepScr, onSleepTouch, LV_EVENT_PRESSED, nullptr);
+    }
+    /* uiScr stays the "previous" screen, so its loops must stop explicitly. */
+    lv_anim_delete(setupHint, nullptr);
+    ui_dots_set_paused(true);
+    ui_pet_set_paused(true);
+    lv_screen_load(sleepScr);
+  } else {
+    ui_pet_set_paused(false);
+    lv_screen_load_anim(uiScr, LV_SCR_LOAD_ANIM_FADE_ON, 300, 0, false);
+    start_hint_blink();
+    ui_dots_set_paused(false);
+  }
+}
+
 void ui_set_power(bool charging, int pct) {
+  if (uiAsleep) return;
   if (pct < 0 || charging) {
     lv_label_set_text(battLbl, LV_SYMBOL_CHARGE);
   } else if (pct >= 90) {
@@ -337,6 +386,7 @@ void ui_set_power(bool charging, int pct) {
 }
 
 void ui_tick_clock() {
+  if (uiAsleep) return;
   time_t now = time(nullptr);
   struct tm t;
   if (now < 100000 || !localtime_r(&now, &t)) {

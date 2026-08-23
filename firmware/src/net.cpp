@@ -11,12 +11,16 @@
 
 static Snapshot snap;
 static uint32_t lastPoll;
+static uint32_t pollMs = 2000;
+static uint32_t lastOkMs;
 static uint32_t lastNtpTry;
 static uint32_t lastWifiTry;
 static uint32_t wifiBackoff = 2000;
 static bool ntpOk;
 static bool mdnsReady;
 static int lastHttp = -999;
+
+static const uint32_t SRV_LOST_MS = 15000; /* miss this many polls in a row -> server lost */
 
 static void parseDash(const String &body) {
   JsonDocument doc;
@@ -26,6 +30,9 @@ static void parseDash(const String &body) {
     Serial.printf("json %s\n", err.c_str());
     return;
   }
+
+  snap.srvTs = (time_t)(doc["ts"] | 0);
+  snap.petSince = (time_t)(doc["pet"]["since"] | 0);
 
   JsonObject glm = doc["glm"];
   snap.glmOk = glm["ok"] | false;
@@ -53,6 +60,7 @@ static void parseDash(const String &body) {
   snap.glmDot = doc["pet"]["dots"]["zcode"] | false;
   snap.curDot = doc["pet"]["dots"]["cursor"] | false;
   snap.fresh = true;
+  lastOkMs = millis();
 }
 
 static bool usableV4(const IPAddress &ip) {
@@ -149,6 +157,7 @@ void net_reconnect() {
 
 void net_begin() {
   snap.petState = "idle";
+  lastOkMs = millis(); /* grace period: no "server lost" right after boot */
   WiFi.mode(WIFI_STA);
   net_reconnect();
   if (!config_wifi_ssid().length()) {
@@ -174,15 +183,20 @@ void net_loop() {
     ntpOk = true;
   }
   rtc_save_if_synced();
-  if (now - lastPoll < 2000) return;
+  if (now - lastPoll < pollMs) return;
   lastPoll = now;
   pollOnce();
   if (lvgl_port_lock(50)) {
     ui_apply(snap);
-    ui_set_wifi(WiFi.status() == WL_CONNECTED);
+    ui_set_link(net_wifi_up(), net_server_ok());
     lvgl_port_unlock();
   }
 }
 
 bool net_wifi_up() { return WiFi.status() == WL_CONNECTED; }
 const Snapshot &net_snapshot() { return snap; }
+uint32_t net_last_ok_ms() { return lastOkMs; }
+bool net_server_ok() {
+  return WiFi.status() == WL_CONNECTED && millis() - lastOkMs < SRV_LOST_MS;
+}
+void net_set_poll_ms(uint32_t ms) { pollMs = ms < 1000 ? 1000 : ms; }

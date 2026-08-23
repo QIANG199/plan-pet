@@ -51,15 +51,7 @@ static void dot_set_opa(void *obj, int32_t v) {
   lv_obj_set_style_bg_opa((lv_obj_t *)obj, (lv_opa_t)v, 0);
 }
 
-lv_obj_t *ui_mk_dot(lv_obj_t *parent) {
-  lv_obj_t *d = lv_obj_create(parent);
-  ui_no_scroll(d);
-  lv_obj_set_size(d, 6, 6);
-  lv_obj_set_style_radius(d, LV_RADIUS_CIRCLE, 0);
-  lv_obj_set_style_bg_color(d, UI_OK, 0);
-  lv_obj_set_style_bg_opa(d, LV_OPA_COVER, 0);
-  lv_obj_set_style_border_width(d, 0, 0);
-  lv_obj_add_flag(d, LV_OBJ_FLAG_HIDDEN);
+static void dot_breathe(lv_obj_t *d) {
   lv_anim_t a;
   lv_anim_init(&a);
   lv_anim_set_var(&a, d);
@@ -70,7 +62,32 @@ lv_obj_t *ui_mk_dot(lv_obj_t *parent) {
   lv_anim_set_path_cb(&a, lv_anim_path_ease_in_out);
   lv_anim_set_exec_cb(&a, dot_set_opa);
   lv_anim_start(&a);
+}
+
+lv_obj_t *ui_mk_dot(lv_obj_t *parent) {
+  lv_obj_t *d = lv_obj_create(parent);
+  ui_no_scroll(d);
+  lv_obj_set_size(d, 6, 6);
+  lv_obj_set_style_radius(d, LV_RADIUS_CIRCLE, 0);
+  lv_obj_set_style_bg_color(d, UI_OK, 0);
+  lv_obj_set_style_bg_opa(d, LV_OPA_COVER, 0);
+  lv_obj_set_style_border_width(d, 0, 0);
+  lv_obj_add_flag(d, LV_OBJ_FLAG_HIDDEN);
+  dot_breathe(d);
   return d;
+}
+
+/* The dashboard screen stays the "previous" screen while blanked, so its
+ * invalidate areas are still accepted — stop the breathing loops or they
+ * keep re-rendering black frames while the backlight is off. */
+void ui_dots_set_paused(bool paused) {
+  if (paused) {
+    lv_anim_delete(glmDot, nullptr);
+    lv_anim_delete(curDot, nullptr);
+  } else {
+    dot_breathe(glmDot);
+    dot_breathe(curDot);
+  }
 }
 
 lv_obj_t *ui_mk_row(lv_obj_t *parent, lv_obj_t **k, lv_obj_t **r, lv_obj_t **pct) {

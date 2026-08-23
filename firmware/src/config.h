@@ -18,3 +18,5 @@ void config_set_token(const String &token);
 void config_set_port(uint16_t port);
 uint8_t config_bright();
 void config_set_bright(uint8_t v);
+uint8_t config_sleep_timeout();          /* standby minutes, 0 = off */
+void config_set_sleep_timeout(uint8_t v);

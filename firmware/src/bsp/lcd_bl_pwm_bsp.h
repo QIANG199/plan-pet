@@ -12,6 +12,12 @@ extern "C" {
 void lcd_bl_pwm_bsp_init(uint8_t brightness);
 void lcd_bl_set_brightness(uint8_t brightness);
 
+/* Standby pair: duty-inverted 0 still emits a ~78ns low glitch per period
+ * (visible in the dark), so off() parks the pin high via ledc_stop and
+ * on() re-runs the channel config to restart PWM at the given brightness. */
+void lcd_bl_pwm_bsp_off(void);
+void lcd_bl_pwm_bsp_on(uint8_t brightness);
+
 #ifdef __cplusplus
 }
 #endif

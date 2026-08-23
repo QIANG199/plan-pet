@@ -1,5 +1,6 @@
 #include "config.h"
 #include "net.h"
+#include "standby.h"
 #include "ui/ui.h"
 #include "ui/ui_settings.h"
 #include "power.h"
@@ -13,6 +14,7 @@ static String ssid, pass, token, host;
 static uint16_t port = SECRET_PORT;
 static bool dark = true;
 static uint8_t bright = 255;
+static uint8_t sleepT = 5; /* standby minutes after the pet falls asleep */
 static String lineBuf;
 
 static void applyBright() {
@@ -28,6 +30,8 @@ static void load() {
   dark = prefs.getBool("dark", true);
   bright = (uint8_t)prefs.getUChar("bright", 255);
   if (bright < 8) bright = 8;
+  sleepT = (uint8_t)prefs.getUChar("sleepT", 5);
+  if (sleepT > 90) sleepT = 90;
 }
 
 static void save() {
@@ -43,11 +47,13 @@ static void printCfg() {
   Serial.println("host=" + host + ":" + String(port));
   Serial.println("token=" + String(token.length() ? "(set)" : "(empty)"));
   Serial.printf("bright=%u\n", (unsigned)bright);
+  Serial.printf("sleep=%umin\n", (unsigned)sleepT);
 }
 
 static void handleLine(String line) {
   line.trim();
   if (line.length() == 0) return;
+  standby_request_wake(); /* any serial command lights the screen back up */
   int sp = line.indexOf(' ');
   String cmd = sp < 0 ? line : line.substring(0, sp);
   String arg = sp < 0 ? "" : line.substring(sp + 1);
@@ -91,6 +97,19 @@ static void handleLine(String line) {
       config_set_bright((uint8_t)v);
     }
     Serial.printf("ok bright %u\n", (unsigned)bright);
+  } else if (cmd == "SLEEP") {
+    if (arg.equalsIgnoreCase("NOW")) {
+      standby_request_sleep_now();
+      Serial.println("ok sleep now");
+    } else if (arg.length()) {
+      int v = arg.toInt();
+      if (v < 0) v = 0;
+      if (v > 90) v = 90;
+      config_set_sleep_timeout((uint8_t)v);
+      Serial.printf("ok sleep %umin\n", (unsigned)sleepT);
+    } else {
+      Serial.printf("sleep %umin (0=off, NOW=blank now)\n", (unsigned)sleepT);
+    }
   } else if (cmd == "OFF") {
     power_request_shutdown();
     Serial.println("ok off countdown; PWR press cancels");
@@ -123,6 +142,7 @@ static void handleLine(String line) {
     Serial.println("PORT <1-65535>");
     Serial.println("PET <idle|thinking|typing|happy|error|sleeping|auto>");
     Serial.println("BRIGHT <8-255>");
+    Serial.println("SLEEP <0-90>|NOW");
     Serial.println("OFF");
     Serial.println("REBOOT");
     Serial.println("SHOW");
@@ -135,7 +155,7 @@ void config_begin() {
   prefs.begin("panel", false);
   load();
   applyBright();
-  Serial.println("serial: WIFI / PASS / TOKEN / HOST / PET / BRIGHT / SHOW");
+  Serial.println("serial: WIFI / PASS / TOKEN / HOST / PET / BRIGHT / SLEEP / SHOW");
   printCfg();
 }
 
@@ -192,4 +212,12 @@ void config_set_bright(uint8_t v) {
   bright = v;
   prefs.putUChar("bright", bright);
   applyBright();
+}
+
+uint8_t config_sleep_timeout() { return sleepT; }
+
+void config_set_sleep_timeout(uint8_t v) {
+  if (v > 90) v = 90;
+  sleepT = v;
+  prefs.putUChar("sleepT", sleepT);
 }

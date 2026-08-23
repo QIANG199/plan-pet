@@ -8,16 +8,8 @@ static uint8_t duty_for(uint8_t brightness)
   return (uint8_t)(255 - brightness);
 }
 
-void lcd_bl_pwm_bsp_init(uint8_t brightness)
+static void apply_channel(uint8_t brightness)
 {
-  ledc_timer_config_t timer_conf =
-  {
-    .speed_mode = LEDC_LOW_SPEED_MODE,
-    .duty_resolution = LEDC_TIMER_8_BIT,
-    .timer_num = LEDC_TIMER_3,
-    .freq_hz = 50 * 1000,
-    .clk_cfg = LEDC_SLOW_CLK_RC_FAST,
-  };
   ledc_channel_config_t ledc_conf =
   {
     .gpio_num = PIN_LCD_BL,
@@ -28,12 +20,36 @@ void lcd_bl_pwm_bsp_init(uint8_t brightness)
     .duty = duty_for(brightness),
     .hpoint = 0,
   };
-  ESP_ERROR_CHECK_WITHOUT_ABORT(ledc_timer_config(&timer_conf));
   ESP_ERROR_CHECK_WITHOUT_ABORT(ledc_channel_config(&ledc_conf));
+}
+
+void lcd_bl_pwm_bsp_init(uint8_t brightness)
+{
+  ledc_timer_config_t timer_conf =
+  {
+    .speed_mode = LEDC_LOW_SPEED_MODE,
+    .duty_resolution = LEDC_TIMER_8_BIT,
+    .timer_num = LEDC_TIMER_3,
+    .freq_hz = 50 * 1000,
+    .clk_cfg = LEDC_SLOW_CLK_RC_FAST,
+  };
+  ESP_ERROR_CHECK_WITHOUT_ABORT(ledc_timer_config(&timer_conf));
+  apply_channel(brightness);
 }
 
 void lcd_bl_set_brightness(uint8_t brightness)
 {
   ESP_ERROR_CHECK_WITHOUT_ABORT(ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, duty_for(brightness)));
   ESP_ERROR_CHECK_WITHOUT_ABORT(ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1));
+}
+
+void lcd_bl_pwm_bsp_off(void)
+{
+  /* Pin idles high = LED dark on the active-low rail, with no PWM residue. */
+  ESP_ERROR_CHECK_WITHOUT_ABORT(ledc_stop(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, 1));
+}
+
+void lcd_bl_pwm_bsp_on(uint8_t brightness)
+{
+  apply_channel(brightness);
 }
