@@ -16,7 +16,9 @@ GitHub：[QIANG199/plan-pet](https://github.com/QIANG199/plan-pet)（源码 [Apa
 - 桌宠 6 态：`idle` / `thinking` / `typing` / `happy` / `error` / `sleeping`（idle 不是睡觉；sleeping 约 15 分钟无事件才进入）
 - 绿点按应用独立亮（Cursor 与 ZCode 可同时亮）；两边都在忙时，动画跟 GLM
 - 点时间下方空白切换深/浅主题；点桌宠播放 poke
-- 纯电池：背面 PWR 长按约 3 秒开机（亮屏松手），再长按约 3 秒关机（屏灭松手）。USB 插着时长按不会关机
+- **BOOT 键**：短按换深/浅主题，双击进**设置页**（触屏配网：选 WiFi、输密码、改主机/端口/令牌），长按 5 秒松手重启
+- **PWR 键**：长按约 3 秒触发**关机倒计时**（左侧卡片显示 3·2·1，期间再按一次 PWR 取消），倒计时走完才断电黑屏；USB 插着永不关机
+- 纯电池：背面 PWR 长按约 3 秒开机（亮屏松手）
 
 硬件：微雪 **ESP32-S3-Touch-LCD-3.49** A 款带 18650（SKU 32373），物理 172×640，横屏按 640×172 来画。
 
@@ -95,11 +97,13 @@ node hooks/install.js
 - 日常插 USB 供电；18650 是备用。电脑要开着，中转服务要在跑。
 - 同一局域网。面板用 mDNS 找 `desktop-pet.local`，不要把会变的电脑 IP 当成长期身份。
 - 若解析失败，串口可临时 `HOST <电脑当前IP>`，这是逃生口，不是默认做法。
-- 背面 **BOOT / RESET** 固件不读。RESET 是硬件复位；BOOT 只在烧录时进下载模式。
+- 背面 **RESET** 键是硬件复位线，固件读不到；**BOOT** 键已由固件接管（换肤 / 设置 / 重启）。
 
-### 6. 串口改配置（115200）
+### 6. 配置：触屏设置页（推荐）或串口
 
-USB 连着电脑时可用串口监视器（COM 口以设备管理器为准）：
+**触屏**：BOOT 键**双击**进设置页——左侧扫出的 WiFi 列表里点一个网络，弹出软键盘输密码，连接成功自动记住；右侧可改主机 / 端口 / 面板令牌。全程无需电脑。首次烧录且未配网时，桌面会闪烁 `Setup: BOOT x2` 提示。
+
+**串口**（115200，开发调试用）：
 
 ```
 WIFI <ssid>
@@ -107,11 +111,11 @@ PASS <password>
 TOKEN <面板令牌>
 HOST desktop-pet.local
 BRIGHT 8-255
+OFF          触发关机倒计时（再按 PWR 可取消）
+REBOOT       立即重启
 SHOW
 PET idle|thinking|typing|happy|error|sleeping|auto
 ```
-
-写入后进 NVS，重启仍有效。`PET auto` 跟随中转服务。
 
 ---
 
@@ -175,18 +179,18 @@ mklink /J firmware\lib\lvgl D:\develop\ESP32-S3-Touch-LCD-3.49\Arduino_Libraries
 - `upload_port` / `monitor_port`：你的串口号（Windows 常见 `COMx`）
 - `build_flags` 里 `-I.../Network/src`：与 `core_dir` 下的 Arduino 包路径对齐
 
-编译前会自动跑 `tools/bake_pet.py`（需要 Pillow，以及可读的 GIF 目录）。手动烤帧：
+编译前会自动跑 `firmware/tools/bake_pet.py`（需要 Pillow，以及可读的 GIF 目录；PlatformIO 自带的 Python 没有 Pillow 时会自动回退系统 Python，仍失败则沿用已烤好的帧）。手动烤帧：
 
 ```bat
 pip install pillow
-python tools/bake_pet.py
+python firmware\tools\bake_pet.py
 ```
 
 GIF 不在默认盘符时：
 
 ```bat
 set CLAWD_GIF_DIR=C:\path\to\clawd-on-desk\assets\gif
-python tools/bake_pet.py
+python firmware\tools\bake_pet.py
 ```
 
 ### 5. 烧录
@@ -215,11 +219,10 @@ node hooks/install.js
 
 | 目录 | 职责 |
 |---|---|
-| `server/` | 中转服务（Node 标准库 + `bonjour-service`） |
-| `firmware/` | 额度面板固件（PlatformIO + Arduino + LVGL 9），纯显示 |
+| `server/` | 中转服务（Node 标准库 + `bonjour-service`；`src/lib/` 为与 hooks 共享的事件表/工具，`tests/` 为单测 `npm test`） |
+| `firmware/` | 额度面板固件（PlatformIO + Arduino + LVGL 9），纯显示；`src/ui/` 界面、`src/bsp/` 板级驱动、`tools/` 烤帧脚本 |
 | `hooks/` | Cursor / ZCode 适配器；`install.js` 只追加 |
-| `tools/` | 把 clawd GIF 烤成 RGB565（`pet_blob.S`） |
-| `docs/` | 设计方案、1:1 设计稿、领域词汇 |
+| `docs/` | 设计方案、1:1 设计稿（桌面 + 设置页）、领域词汇 |
 
 改行为前先读 [CONTEXT.md](CONTEXT.md)（术语）和 [docs/design/01-设计方案.md](docs/design/01-设计方案.md)（API、状态机、ADR）。
 

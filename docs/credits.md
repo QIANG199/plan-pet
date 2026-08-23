@@ -6,7 +6,7 @@ PlanPet **自己的代码**以仓库根目录 [Apache License 2.0](../LICENSE) �
 
 屏上 clawd 动画**不是**本仓库原创，也**不随 Git 分发**（烤出来的 `pet_frames.bin` / `pet_blob.S` 已 gitignore）。
 
-编译前 `tools/bake_pet.py` 从本机 [Clawd on Desk](https://github.com/rullerzhou-afk/clawd-on-desk) 的 `assets/gif/` 读取 GIF，合成到深/浅底上再转成 RGB565。
+编译前 `firmware/tools/bake_pet.py` 从本机 [Clawd on Desk](https://github.com/rullerzhou-afk/clawd-on-desk) 的 `assets/gif/` 读取 GIF，合成到深/浅底上再转成 RGB565。
 
 | 项 | 说明 |
 |---|---|
