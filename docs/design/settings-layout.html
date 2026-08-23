@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESP32 桌面额度面板 · 设置页设计稿 v1</title>
+<style>
+:root{
+  --page-bg:#f2f4f7; --card:#ffffff; --ink:#1c2430; --ink2:#5a6575; --ink3:#8a93a3;
+  --line:#dfe3e9; --ok:#22c55e; --warn:#f0805a; --bad:#ef4444;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--page-bg)}
+body{color:var(--ink);font-family:-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:32px 24px 48px}
+.wrap{max-width:2080px;margin:0 auto}
+h1{font-size:22px;font-weight:600}
+.meta{color:var(--ink2);font-size:13px;margin-top:6px;line-height:1.7}
+.meta b{color:var(--ink);font-weight:500}
+
+.devices{display:flex;gap:40px;flex-wrap:wrap;margin-top:28px;align-items:flex-start}
+.device-wrap{width:980px;height:266px;position:relative}
+.device{width:640px;height:172px;transform:scale(1.5);transform-origin:top left}
+
+/* Settings uses the firmware palette: dark = pure black cards with #2a303c
+   borders (matches the baked pet background), light = #e9edf2 / white. */
+.screen{width:640px;height:172px;border-radius:14px;overflow:hidden;padding:6px;
+  display:flex;flex-direction:column;gap:6px;transition:background .25s}
+.screen[data-theme=dark]{background:#000000}
+.screen[data-theme=light]{background:#e9edf2}
+
+.hd{height:24px;flex:none;display:flex;align-items:center;gap:8px;padding:0 2px}
+.hd .back{width:46px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;gap:3px;font-size:11px;cursor:pointer;user-select:none}
+.hd .back svg{flex:none}
+.screen[data-theme=dark] .back{background:#2a303c;color:#e8ecf3}
+.screen[data-theme=light] .back{background:#ffffff;color:#1c2430;box-shadow:inset 0 0 0 1px #e3e7ec}
+.hd .tt{font-size:12px;font-weight:600;letter-spacing:.4px}
+.screen[data-theme=dark] .hd .tt{color:#e8ecf3}
+.screen[data-theme=light] .hd .tt{color:#1c2430}
+.hd .stat{margin-left:auto;display:flex;align-items:center;gap:5px;font-size:10px}
+.screen[data-theme=dark] .hd .stat{color:#9aa3b2}
+.screen[data-theme=light] .hd .stat{color:#5a6575}
+.hd .stat .dot{width:6px;height:6px;border-radius:50%;background:var(--ok);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+.cols{flex:1;display:flex;gap:8px;min-height:0}
+.panel-card{border-radius:8px;display:flex;flex-direction:column;min-height:0;transition:background .25s,box-shadow .25s}
+.screen[data-theme=dark] .panel-card{background:#000000;box-shadow:inset 0 0 0 1px #2a303c}
+.screen[data-theme=light] .panel-card{background:#ffffff;box-shadow:inset 0 0 0 1px #e3e7ec}
+.wifi-card{width:368px;flex:none;padding:8px 8px 6px}
+.srv-card{width:258px;flex:none;padding:8px 10px 8px}
+
+.p-row{height:20px;flex:none;display:flex;align-items:center;gap:6px}
+.p-row .cap{font-size:11px;font-weight:600;letter-spacing:.3px}
+.screen[data-theme=dark] .p-row .cap{color:#e8ecf3}
+.screen[data-theme=light] .p-row .cap{color:#1c2430}
+.rescan{margin-left:auto;height:18px;padding:0 8px;border-radius:9px;font-size:10px;display:flex;align-items:center;gap:4px;cursor:pointer;user-select:none}
+.screen[data-theme=dark] .rescan{background:#2a303c;color:#e8ecf3}
+.screen[data-theme=light] .rescan{background:#e9edf2;color:#5a6575}
+.rescan svg{flex:none}
+.rescan.spin svg{animation:rot 1s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+
+.netlist{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:2px;margin-top:4px}
+.net{height:24px;flex:none;border-radius:6px;display:flex;align-items:center;gap:6px;padding:0 6px;cursor:pointer;user-select:none}
+.screen[data-theme=dark] .net:hover,.screen[data-theme=dark] .net:active{background:#191d26}
+.screen[data-theme=light] .net:hover,.screen[data-theme=light] .net:active{background:#eef1f5}
+.net .ssid{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.screen[data-theme=dark] .net .ssid{color:#e8ecf3}
+.screen[data-theme=light] .net .ssid{color:#1c2430}
+.net.cur .ssid{font-weight:600}
+.net .sig{margin-left:auto;flex:none;display:flex;align-items:flex-end;gap:1px}
+.net .sig i{width:3px;border-radius:1px;background:#9aa3b2;display:block}
+.screen[data-theme=light] .net .sig i{background:#5a6575}
+.net .sig i:nth-child(1){height:3px}.net .sig i:nth-child(2){height:5px}
+.net .sig i:nth-child(3){height:7px}.net .sig i:nth-child(4){height:9px}
+.net .sig i.off{opacity:.22}
+.net .lk{flex:none;font-size:9px}
+.screen[data-theme=dark] .net .lk{color:#9aa3b2}
+.screen[data-theme=light] .net .lk{color:#5a6575}
+.net .curdot{flex:none;display:none;align-items:center;gap:4px;font-size:9px;color:var(--ok)}
+.net.cur .curdot{display:flex}
+.scan-ph{height:24px;border-radius:6px;display:flex;align-items:center;overflow:hidden;position:relative}
+.screen[data-theme=dark] .scan-ph{background:#151922}
+.screen[data-theme=light] .scan-ph{background:#eef1f5}
+.scan-ph::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(154,163,178,.18),transparent);animation:shimmer 1.2s ease-in-out infinite}
+@keyframes shimmer{from{transform:translateX(-60%)}to{transform:translateX(60%)}}
+
+.srow{height:24px;flex:none;display:flex;align-items:center;gap:8px;border-radius:6px;padding:0 6px;cursor:pointer;user-select:none}
+.screen[data-theme=dark] .srow:hover,.screen[data-theme=dark] .srow:active{background:#191d26}
+.screen[data-theme=light] .srow:hover,.screen[data-theme=light] .srow:active{background:#eef1f5}
+.srow .k{font-size:10px;flex:none}
+.screen[data-theme=dark] .srow .k{color:#9aa3b2}
+.screen[data-theme=light] .srow .k{color:#5a6575}
+.srow .v{font-size:11px;margin-left:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.screen[data-theme=dark] .srow .v{color:#e8ecf3}
+.screen[data-theme=light] .srow .v{color:#1c2430}
+.srow .chev{flex:none;font-size:10px;color:var(--ink3)}
+.save{height:24px;flex:none;margin-top:6px;border-radius:6px;background:var(--ok);color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none}
+.save:active{filter:brightness(1.08)}
+.save[disabled]{background:#5a6575}
+
+/* ---- keyboard takeover ---- */
+.kb-top{height:24px;flex:none;display:flex;align-items:center;gap:6px;padding:0 2px}
+.kb-top .x{width:24px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer}
+.screen[data-theme=dark] .kb-top .x{background:#2a303c;color:#e8ecf3}
+.screen[data-theme=light] .kb-top .x{background:#ffffff;color:#1c2430;box-shadow:inset 0 0 0 1px #e3e7ec}
+.kb-top .nm{font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.screen[data-theme=dark] .kb-top .nm{color:#e8ecf3}
+.screen[data-theme=light] .kb-top .nm{color:#1c2430}
+.kb-top .eye{margin-left:auto;width:24px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer}
+.screen[data-theme=dark] .kb-top .eye{background:#2a303c;color:#e8ecf3}
+.screen[data-theme=light] .kb-top .eye{background:#ffffff;color:#1c2430;box-shadow:inset 0 0 0 1px #e3e7ec}
+.kb-top .go{height:22px;padding:0 10px;border-radius:6px;background:var(--ok);color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none}
+.kb-top .go:active{filter:brightness(1.08)}
+.kb-top .go .mini{width:10px;height:10px;border-radius:50%;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;animation:rot .8s linear infinite}
+
+.kb-in{height:24px;flex:none;margin:0 2px;border-radius:6px;display:flex;align-items:center;padding:0 8px;gap:2px;font-size:12px;letter-spacing:1px}
+.screen[data-theme=dark] .kb-in{background:#151922;color:#e8ecf3;box-shadow:inset 0 0 0 1px #2a303c}
+.screen[data-theme=light] .kb-in{background:#eef1f5;color:#1c2430;box-shadow:inset 0 0 0 1px #e3e7ec}
+.kb-in.err{box-shadow:inset 0 0 0 1px var(--bad);animation:shake .3s ease}
+@keyframes shake{25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+.kb-in .caret{width:1px;height:12px;background:var(--ok);animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.kb-in .msg{font-size:10px;color:var(--bad);margin-left:auto}
+
+.kbd{flex:1;min-height:0;display:flex;flex-direction:column;gap:3px;padding:2px 0 0}
+.krow{flex:1;display:flex;gap:3px;min-height:0}
+.key{flex:1;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;user-select:none}
+.screen[data-theme=dark] .key{background:#2a303c;color:#e8ecf3}
+.screen[data-theme=light] .key{background:#ffffff;color:#1c2430;box-shadow:inset 0 0 0 1px #e3e7ec}
+.key:active{filter:brightness(1.25)}
+.key.w15{flex:1.5}.key.w2{flex:2}.key.w25{flex:2.5}
+.key.alt{font-size:10px}
+.screen[data-theme=dark] .key.alt{background:#1c212c}
+.screen[data-theme=light] .key.alt{background:#eef1f5;box-shadow:inset 0 0 0 1px #e3e7ec}
+.key.ok{background:var(--ok);color:#fff}
+
+figure{margin:0;display:flex;flex-direction:column;align-items:center}
+figcaption{font-size:13px;color:var(--ink2);margin-top:14px;text-align:center}
+figcaption b{color:var(--ink);font-weight:500}
+.hint{font-size:12px;color:var(--ink3);margin-top:2px;text-align:center}
+
+.sec{margin-top:44px}
+.sec h2{font-size:16px;font-weight:600;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.panel h3{font-size:14px;font-weight:600;margin-bottom:10px}
+.panel table{width:100%;border-collapse:collapse;font-size:13px}
+.panel td{padding:6px 4px;border-bottom:1px solid #f0f2f5;color:var(--ink2);vertical-align:top}
+.panel td:first-child{color:var(--ink);white-space:nowrap;padding-right:12px;font-weight:500}
+.panel tr:last-child td{border-bottom:none}
+.px{font-variant-numeric:tabular-nums}
+.note{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 18px;font-size:13px;color:var(--ink2);line-height:1.8;margin-top:14px}
+.note b{color:var(--ink);font-weight:500}
+
+@media (max-width:1100px){.devices{flex-direction:column}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>设置页设计稿（触屏配网）</h1>
+<p class="meta">
+真机 1:1 · 640×172 · 深浅双主题 · <b>BOOT 双击进入</b> · v1（2026-08-23）<br>
+配色沿用固件实际调色板：深色 = 纯黑卡片 + <span class="px">#2a303c</span> 描边（与桌宠烤帧背景一致）；浅色 = <span class="px">#e9edf2</span> 底 + 白卡。中文标签依赖 LVGL 内置 simsun_16_cjk 字体（见备注）。
+</p>
+
+<div class="devices">
+  <figure>
+    <div class="device-wrap"><div class="device">
+      <div class="screen" data-theme="dark" id="s1d">
+        <div class="hd">
+          <div class="back"><svg width="10" height="10" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>返回</div>
+          <div class="tt">设置</div>
+          <div class="stat"><span class="dot"></span>MyHome-5G</div>
+        </div>
+        <div class="cols">
+          <div class="panel-card wifi-card">
+            <div class="p-row">
+              <div class="cap">WiFi 网络</div>
+              <div class="rescan" onclick="this.classList.toggle('spin')"><svg width="10" height="10" viewBox="0 0 16 16" fill="none"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2v3h-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>重新扫描</div>
+            </div>
+            <div class="netlist" id="list1d">
+              <div class="net cur"><span class="ssid">MyHome-5G</span><span class="lk">🔒</span><span class="sig"><i></i><i></i><i></i><i></i></span><span class="curdot">● 已连接</span></div>
+              <div class="net"><span class="ssid">Office-2.4G</span><span class="lk">🔒</span><span class="sig"><i></i><i></i><i class="off"></i><i class="off"></i></span></div>
+              <div class="net"><span class="ssid">TP-LINK_1234</span><span class="lk">🔒</span><span class="sig"><i></i><i class="off"></i><i class="off"></i><i class="off"></i></span></div>
+              <div class="net"><span class="ssid">Starbucks Guest Free</span><span class="lk"></span><span class="sig"><i></i><i></i><i></i><i class="off"></i></span></div>
+            </div>
+          </div>
+          <div class="panel-card srv-card">
+            <div class="srow"><span class="k">主机</span><span class="v">desktop-pet.local</span><span class="chev">›</span></div>
+            <div class="srow"><span class="k">端口</span><span class="v">3737</span><span class="chev">›</span></div>
+            <div class="srow"><span class="k">令牌</span><span class="v">••••••••••••</span><span class="chev">›</span></div>
+            <div class="save">保存并返回</div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+    <figcaption><b>主页面 · 深色</b></figcaption>
+    <div class="hint">左：WiFi 列表（滚动，已连接绿点标记）｜右：服务器三行 + 保存</div>
+  </figure>
+
+  <figure>
+    <div class="device-wrap"><div class="device">
+      <div class="screen" data-theme="light">
+        <div class="hd">
+          <div class="back"><svg width="10" height="10" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>返回</div>
+          <div class="tt">设置</div>
+          <div class="stat"><span class="dot"></span>MyHome-5G</div>
+        </div>
+        <div class="cols">
+          <div class="panel-card wifi-card">
+            <div class="p-row">
+              <div class="cap">WiFi 网络</div>
+              <div class="rescan"><svg width="10" height="10" viewBox="0 0 16 16" fill="none"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2v3h-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>重新扫描</div>
+            </div>
+            <div class="netlist">
+              <div class="net cur"><span class="ssid">MyHome-5G</span><span class="lk">🔒</span><span class="sig"><i></i><i></i><i></i><i></i></span><span class="curdot">● 已连接</span></div>
+              <div class="net"><span class="ssid">Office-2.4G</span><span class="lk">🔒</span><span class="sig"><i></i><i></i><i class="off"></i><i class="off"></i></span></div>
+              <div class="scan-ph"></div>
+              <div class="scan-ph"></div>
+            </div>
+          </div>
+          <div class="panel-card srv-card">
+            <div class="srow"><span class="k">主机</span><span class="v">desktop-pet.local</span><span class="chev">›</span></div>
+            <div class="srow"><span class="k">端口</span><span class="v">3737</span><span class="chev">›</span></div>
+            <div class="srow"><span class="k">令牌</span><span class="v">未设置</span><span class="chev">›</span></div>
+            <div class="save" disabled>保存并返回</div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+    <figcaption><b>主页面 · 浅色</b>（扫描中占位/未设令牌/保存禁用示例）</figcaption>
+    <div class="hint">无改动时保存按钮置灰；令牌未设置显示「未设置」</div>
+  </figure>
+</div>
+
+<div class="devices">
+  <figure>
+    <div class="device-wrap"><div class="device">
+      <div class="screen" data-theme="dark">
+        <div class="kb-top">
+          <div class="x">✕</div>
+          <div class="nm">Office-2.4G 🔒</div>
+          <div class="eye"><svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M1 8s2.5-4.5 7-4.5S15 8 15 8s-2.5 4.5-7 4.5S1 8 1 8z" stroke="currentColor" stroke-width="1.4"/><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.4"/></svg></div>
+          <div class="go"><span class="mini"></span>连接</div>
+        </div>
+        <div class="kb-in">•••••••<span class="caret"></span></div>
+        <div class="kbd">
+          <div class="krow"><div class="key">q</div><div class="key">w</div><div class="key">e</div><div class="key">r</div><div class="key">t</div><div class="key">y</div><div class="key">u</div><div class="key">i</div><div class="key">o</div><div class="key">p</div><div class="key w15">⌫</div></div>
+          <div class="krow"><div class="key alt">⇧</div><div class="key">a</div><div class="key">s</div><div class="key">d</div><div class="key">f</div><div class="key">g</div><div class="key">h</div><div class="key">j</div><div class="key">k</div><div class="key">l</div><div class="key w15">-</div></div>
+          <div class="krow"><div class="key alt">123</div><div class="key">z</div><div class="key">x</div><div class="key">c</div><div class="key">v</div><div class="key">b</div><div class="key">n</div><div class="key">m</div><div class="key">.</div><div class="key">_</div><div class="key w15">@</div></div>
+          <div class="krow"><div class="key w25">空格</div><div class="key w15">,</div><div class="key ok w2">连接</div></div>
+        </div>
+      </div>
+    </div></div>
+    <figcaption><b>密码输入 · 全屏接管</b>（连接中：按钮转圈）</figcaption>
+    <div class="hint">顶栏 ✕ 取消｜眼睛显/隐密码｜键盘 4 行，窄键 ~44px、行高 ~27px</div>
+  </figure>
+
+  <figure>
+    <div class="device-wrap"><div class="device">
+      <div class="screen" data-theme="light">
+        <div class="kb-top">
+          <div class="x">✕</div>
+          <div class="nm">面板令牌</div>
+          <div class="eye"><svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M1 8s2.5-4.5 7-4.5S15 8 15 8s-2.5 4.5-7 4.5S1 8 1 8z" stroke="currentColor" stroke-width="1.4"/><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.4"/></svg></div>
+          <div class="go">完成</div>
+        </div>
+        <div class="kb-in err">ab12cd<span class="caret"></span><span class="msg">还差 4 位（共 16）</span></div>
+        <div class="kbd">
+          <div class="krow"><div class="key alt">1</div><div class="key">2</div><div class="key">3</div><div class="key">4</div><div class="key">5</div><div class="key">6</div><div class="key">7</div><div class="key">8</div><div class="key">9</div><div class="key">0</div><div class="key w15">⌫</div></div>
+          <div class="krow"><div class="key alt">#+=</div><div class="key">!</div><div class="key">@</div><div class="key">#</div><div class="key">$</div><div class="key">%</div><div class="key">&amp;</div><div class="key">*</div><div class="key">(</div><div class="key">)</div><div class="key w15">-</div></div>
+          <div class="krow"><div class="key alt">abc</div><div class="key">+</div><div class="key">=</div><div class="key">/</div><div class="key">\</div><div class="key">:</div><div class="key">;</div><div class="key">?</div><div class="key">"</div><div class="key">'</div><div class="key w15">`</div></div>
+          <div class="krow"><div class="key w25">空格</div><div class="key w15">.</div><div class="key ok w2">完成</div></div>
+        </div>
+      </div>
+    </div></div>
+    <figcaption><b>令牌/主机编辑</b>（数字符号面板 + 校验错误抖动示例）</figcaption>
+    <div class="hint">主机/端口/令牌共用同一键盘，仅顶栏标题与确认键不同</div>
+  </figure>
+</div>
+
+<div class="sec">
+  <h2>规格</h2>
+  <div class="grid">
+    <div class="panel">
+      <h3>主页面布局（px）</h3>
+      <table>
+        <tr><td>屏幕</td><td>640×172，外边距 6，卡间距 8（与桌面一致）</td></tr>
+        <tr><td>标题栏</td><td>高 24：返回胶囊 46×22 ｜ 标题 12px ｜ 右侧连接点+SSID 10px</td></tr>
+        <tr><td>左卡 WiFi</td><td class="px">368×130：标题行 20（「WiFi 网络」+ 重新扫描胶囊）+ 4×24 列表（可滚动，隔行不分组）</td></tr>
+        <tr><td>网络行</td><td class="px">SSID 11px 省略号 ｜ 信号 4 条（3/5/7/9px）｜ 🔒 ｜ 当前网绿点 ● 已连接</td></tr>
+        <tr><td>右卡服务器</td><td class="px">258×130：主机/端口/令牌 3×24 行 + 保存按钮 24（满宽，绿底白字）</td></tr>
+        <tr><td>设置行</td><td>键 10px ink2 ｜ 值 11px ink 右对齐省略 ｜ 令牌掩码 ••••，未设显示「未设置」</td></tr>
+      </table>
+    </div>
+    <div class="panel">
+      <h3>键盘页布局（px）</h3>
+      <table>
+        <tr><td>顶栏</td><td class="px">高 24：✕ 24×22 ｜ SSID/字段名 11px ｜ 眼睛 24×22 ｜ 连接/完成胶囊（绿）</td></tr>
+        <tr><td>输入框</td><td class="px">高 24 圆角 6：密码圆点 12px ｜ 光标 1×12 绿色闪烁 ｜ 错误红边+右移错误文案 10px</td></tr>
+        <tr><td>键盘</td><td class="px">4 行 × 行高 ~27，键距 3，键圆角 5；字母 11 行（10 字母+宽1.5功能），第 4 行 空格2.5+符号1.5+确认2</td></tr>
+        <tr><td>面板切换</td><td>abc ⇄ 123 ⇄ #+=（LVGL keyboard 三套 map），⇧ 大写锁定变高亮</td></tr>
+      </table>
+    </div>
+    <div class="panel">
+      <h3>交互</h3>
+      <table>
+        <tr><td>进入</td><td>BOOT 双击；进入时暂停桌宠帧动画，网络轮询后台继续</td></tr>
+        <tr><td>扫描</td><td>进入自动扫 + 「重新扫描」；扫描中列表显示 shimmer 占位、按钮图标旋转</td></tr>
+        <tr><td>连接</td><td>按钮转圈 ≤15s → 成功绿 ✓ 600ms 自动收起并存 NVS → 失败输入框抖动+红边+文案，旧凭据自动回连</td></tr>
+        <tr><td>保存返回</td><td>值有变化才可点；点击保存 → 回桌面并触发重连</td></tr>
+        <tr><td>返回键</td><td>键盘页 ✕ = 回主设置；主设置「返回」= 回桌面（未保存改动丢弃）</td></tr>
+        <tr><td>首跑引导</td><td>无凭据时桌面 WiFi 图标旁闪烁「Setup: double-click BOOT」10px 提示</td></tr>
+      </table>
+    </div>
+    <div class="panel">
+      <h3>配色与字体</h3>
+      <table>
+        <tr><td>深色</td><td class="px">底 #000000｜卡 #000000 + 边 #2a303c｜墨 #e8ecf3｜次 #9aa3b2｜强调绿 #22c55e</td></tr>
+        <tr><td>浅色</td><td class="px">底 #e9edf2｜卡 #ffffff｜墨 #1c2430｜次 #5a6575</td></tr>
+        <tr><td>字体</td><td>拉丁/数字 montserrat 12/14；中文标签需启用 LV_FONT_SIMSUN_16_CJK（10-12px 中文可用拉丁字号渲染时退回英文标签）</td></tr>
+        <tr><td>主题联动</td><td>设置页跟随深/浅主题即时切换；BOOT 短按换肤在设置页内同样生效</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="note">
+    <b>备注</b>：① 键盘纵向空间紧（24+24+4×27+间距 ≈ 172），实机如挤压可砍第 4 行、把「连接」并入顶栏；② simsun_16_cjk 约增 500KB flash，当前余量约 800KB，超限时中文标签回退英文（WiFi / Host / Port / Token / Save / Back）；③ 扫描在 STA 连接态做会短暂跳信道，属正常现象。
+  </div>
+</div>
+</div>
+</body>
+</html>
