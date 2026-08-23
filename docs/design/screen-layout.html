@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESP32 桌面额度面板 · 屏幕设计稿 v11</title>
+<style>
+:root{
+  --page-bg:#f2f4f7; --card:#ffffff; --ink:#1c2430; --ink2:#5a6575; --ink3:#8a93a3;
+  --line:#dfe3e9; --ok:#22c55e; --warn:#f0805a; --bad:#ef4444;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--page-bg)}
+body{color:var(--ink);font-family:-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:32px 24px 48px}
+.wrap{max-width:2080px;margin:0 auto}
+h1{font-size:22px;font-weight:600}
+.meta{color:var(--ink2);font-size:13px;margin-top:6px;line-height:1.7}
+.meta b{color:var(--ink);font-weight:500}
+
+.devices{display:flex;gap:40px;flex-wrap:wrap;margin-top:28px;align-items:flex-start}
+.device-wrap{width:960px;height:258px;position:relative}
+.device{width:640px;height:172px;padding:0;background:transparent;
+  transform:scale(1.5);transform-origin:top left}
+
+.screen{width:640px;height:172px;border-radius:14px;overflow:hidden;display:flex;gap:8px;padding:6px;transition:background .25s}
+.screen[data-theme=dark]{background:#101318}
+.screen[data-theme=light]{background:#e9edf2}
+
+/* 6+80+8+372+8+160+6 = 640；桌宠 160² */
+.col-status{width:80px;height:160px;border-radius:8px;padding:8px 6px;display:flex;flex-direction:column;align-items:center;flex:none;transition:background .25s}
+.screen[data-theme=dark] .col-status{background:#1a1e26}
+.screen[data-theme=light] .col-status{background:#ffffff;box-shadow:inset 0 0 0 1px #e3e7ec}
+.col-mid{width:372px;display:flex;flex-direction:column;gap:4px;flex:none}
+.card{border-radius:8px;padding:6px 10px 8px;height:78px;flex:none;display:flex;flex-direction:column;gap:4px;transition:background .25s}
+.screen[data-theme=dark] .card{background:#1a1e26}
+.screen[data-theme=light] .card{background:#ffffff;box-shadow:inset 0 0 0 1px #e3e7ec}
+.petzone{width:160px;height:160px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:none;cursor:pointer;transition:background .25s;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+.screen[data-theme=dark] .petzone{background:#1a1e26}
+.screen[data-theme=light] .petzone{background:#ffffff;box-shadow:inset 0 0 0 1px #e3e7ec}
+.petzone:active{filter:brightness(1.08)}
+
+.st-time{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:0.02em;text-align:center;width:100%;transition:color .25s}
+.screen[data-theme=dark] .st-time{color:#e8ecf3}
+.screen[data-theme=light] .st-time{color:#1c2430}
+.st-rule{width:52px;height:1px;margin:8px auto 0;border-radius:1px;flex:none;transition:background .25s}
+.screen[data-theme=dark] .st-rule{background:#4a5362}
+.screen[data-theme=light] .st-rule{background:#c5cbd4}
+.st-grow{flex:1;width:100%}
+.st-icons{display:flex;align-items:center;justify-content:center;gap:5px;width:100%;transition:color .25s}
+.screen[data-theme=dark] .st-icons{color:#9aa3b2}
+.screen[data-theme=light] .st-icons{color:#5a6575}
+.st-icons svg{flex:none;display:block}
+.st-batt{font-size:10px;font-variant-numeric:tabular-nums}
+
+.title{display:flex;align-items:center;gap:6px;min-height:14px;flex:none}
+.metric{display:flex;flex-direction:column;gap:2px;flex:none}
+.title .reset{margin-left:auto}
+.brand{font-size:12px;font-weight:600;letter-spacing:0.4px;transition:color .25s}
+.screen[data-theme=dark] .brand{color:#e8ecf3}
+.screen[data-theme=light] .brand{color:#1c2430}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--ok);flex:none}
+
+.lblrow{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:11px;transition:color .25s}
+.screen[data-theme=dark] .lblrow{color:#9aa3b2}
+.screen[data-theme=light] .lblrow{color:#5a6575}
+.k{flex:none;font-variant-numeric:tabular-nums}
+.k.win{width:32px}
+.tail{display:flex;align-items:baseline;gap:8px;margin-left:auto;font-variant-numeric:tabular-nums}
+.screen[data-theme=dark] .lblrow .v{color:#e8ecf3}
+.screen[data-theme=light] .lblrow .v{color:#1c2430}
+.v{min-width:2.4em;text-align:right}
+.reset{font-size:11px}
+.bar{height:7px;border-radius:3px;overflow:hidden;flex:none;transition:background .25s}
+.screen[data-theme=dark] .bar{background:#2a303c}
+.screen[data-theme=light] .bar{background:#e4e8ee}
+.fill{height:100%;border-radius:3px}
+.fill[data-tone=ok]{background:var(--ok)}
+.fill[data-tone=warn]{background:var(--warn)}
+.fill[data-tone=bad]{background:var(--bad)}
+
+.pet{animation:float 2s ease-in-out infinite alternate;transform-origin:50% 60%}
+.armL{animation:typeL .5s ease-in-out infinite alternate;transform-origin:30px 76px}
+.armR{animation:typeR .5s ease-in-out infinite alternate;transform-origin:210px 76px}
+@keyframes float{from{transform:translateY(0)}to{transform:translateY(-5px)}}
+@keyframes typeL{from{transform:rotate(0deg)}to{transform:rotate(-9deg)}}
+@keyframes typeR{from{transform:rotate(0deg)}to{transform:rotate(9deg)}}
+@media (prefers-reduced-motion:reduce){.pet,.armL,.armR{animation:none}}
+
+figure{margin:0;display:flex;flex-direction:column;align-items:center}
+figcaption{font-size:13px;color:var(--ink2);margin-top:14px;text-align:center}
+figcaption b{color:var(--ink);font-weight:500}
+.hint{font-size:12px;color:var(--ink3);margin-top:2px;text-align:center}
+
+.sec{margin-top:44px}
+.sec h2{font-size:16px;font-weight:600;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.panel h3{font-size:14px;font-weight:600;margin-bottom:10px}
+.panel table{width:100%;border-collapse:collapse;font-size:13px}
+.panel td{padding:6px 4px;border-bottom:1px solid #f0f2f5;color:var(--ink2);vertical-align:top}
+.panel td:first-child{color:var(--ink);white-space:nowrap;padding-right:12px;font-weight:500}
+.panel tr:last-child td{border-bottom:none}
+.px{font-variant-numeric:tabular-nums}
+.note{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 18px;font-size:13px;color:var(--ink2);line-height:1.8;margin-top:14px}
+.note b{color:var(--ink);font-weight:500}
+.swatch{display:inline-block;width:8px;height:8px;border-radius:2px;vertical-align:middle;margin:0 4px 0 2px}
+.swatch.ok{background:var(--ok)}
+.swatch.warn{background:var(--warn)}
+.swatch.bad{background:var(--bad)}
+.ico-row{display:flex;align-items:center;gap:10px;margin-top:8px;color:var(--ink2);font-size:13px}
+.ico-row svg{color:var(--ink)}
+
+@media (max-width:1100px){
+  .devices{flex-direction:column}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>ESP32 桌面额度面板 · 屏幕设计稿</h1>
+<p class="meta">
+v11 · <b>已定稿</b> · 物理 <b>172 × 640</b>，横屏画布 640 × 172，本稿 <b>1:1 像素</b>，预览等比 1.5×<br>
+屏上全英文：GLM <b>5h / 7d</b>，CURSOR <b>composer &amp; grok / other</b> · 百分比靠右 · 进度条距卡底 8px
+</p>
+
+<div class="devices">
+
+<figure>
+<div class="device-wrap">
+<div class="device">
+<div class="screen" data-theme="dark" id="scr1">
+<div class="col-status">
+<span class="st-time">22:36</span>
+<div class="st-rule" aria-hidden="true"></div>
+<div class="st-grow"></div>
+<div class="st-icons">
+<svg width="12" height="10" viewBox="0 0 13 10" title="WiFi"><path d="M6.5 9 L9 6 A4 4 0 0 0 4 6 Z" fill="currentColor"/><path d="M6.5 6 L9.8 2.6 A6 6 0 0 0 3.2 2.6 Z" fill="currentColor"/></svg>
+<svg width="18" height="10" viewBox="0 0 22 10" title="充电中"><rect x="0.5" y="1" width="16" height="8" rx="1.5" fill="none" stroke="currentColor"/><rect x="17.2" y="3.5" width="2.4" height="3" rx="0.5" fill="currentColor"/><polygon points="9.2,2.2 6.6,5.5 8.6,5.5 7.2,8 11.4,4.3 9.2,4.3" fill="currentColor"/></svg>
+<span class="st-batt">76%</span>
+</div>
+</div>
+<div class="col-mid">
+<div class="card">
+<div class="title"><span class="brand">GLM</span><span class="dot" title="运行中"></span></div>
+<div class="metric">
+<div class="lblrow"><span class="k win">5h</span><span class="tail"><span class="reset">2h08m</span><span class="v">12%</span></span></div>
+<div class="bar"><div class="fill" data-pct="12"></div></div>
+</div>
+<div class="metric">
+<div class="lblrow"><span class="k win">7d</span><span class="tail"><span class="reset">3d</span><span class="v">44%</span></span></div>
+<div class="bar"><div class="fill" data-pct="44"></div></div>
+</div>
+</div>
+<div class="card">
+<div class="title"><span class="brand">CURSOR</span><span class="reset">30d</span></div>
+<div class="metric">
+<div class="lblrow"><span class="k">composer &amp; grok</span><span class="tail"><span class="v">4%</span></span></div>
+<div class="bar"><div class="fill" data-pct="4"></div></div>
+</div>
+<div class="metric">
+<div class="lblrow"><span class="k">other</span><span class="tail"><span class="v">0%</span></span></div>
+<div class="bar"><div class="fill" data-pct="0"></div></div>
+</div>
+</div>
+</div>
+<div class="petzone" title="点击切换深/浅主题">
+<svg class="pet" width="150" height="120" viewBox="0 0 120 96" xmlns="http://www.w3.org/2000/svg">
+<ellipse cx="60" cy="56" rx="30" ry="21" fill="#f0805a"/>
+<g class="armL">
+<path d="M30 52 Q16 50 12 40 Q22 36 28 42 Q26 36 30 34 Q36 40 34 48 Z" fill="#f0805a"/>
+<path d="M12 40 Q10 38 12 36" fill="none" stroke="#22262e" stroke-width="1.6" stroke-linecap="round"/>
+</g>
+<g class="armR">
+<path d="M90 52 Q104 50 108 40 Q98 36 92 42 Q94 36 90 34 Q84 40 86 48 Z" fill="#f0805a"/>
+<path d="M108 40 Q110 38 108 36" fill="none" stroke="#22262e" stroke-width="1.6" stroke-linecap="round"/>
+</g>
+<line x1="52" y1="38" x2="50" y2="28" stroke="#f0805a" stroke-width="4" stroke-linecap="round"/>
+<line x1="68" y1="38" x2="70" y2="28" stroke="#f0805a" stroke-width="4" stroke-linecap="round"/>
+<circle cx="50" cy="25" r="8" fill="#ffffff"/>
+<circle cx="70" cy="25" r="8" fill="#ffffff"/>
+<circle cx="51" cy="26" r="3.4" fill="#22262e"/>
+<circle cx="71" cy="26" r="3.4" fill="#22262e"/>
+<path d="M54 62 Q60 67 66 62" fill="none" stroke="#22262e" stroke-width="2" stroke-linecap="round"/>
+<path d="M34 68 Q44 76 54 74" fill="none" stroke="#f0805a" stroke-width="3.4" stroke-linecap="round"/>
+<path d="M86 68 Q76 76 66 74" fill="none" stroke="#f0805a" stroke-width="3.4" stroke-linecap="round"/>
+</svg>
+</div>
+</div>
+</div>
+<figcaption><b>深色 · USB 充电中</b>（闪电电池 + 百分比）</figcaption>
+<div class="hint">点击桌宠切换浅色</div>
+</figure>
+
+<figure>
+<div class="device-wrap">
+<div class="device">
+<div class="screen" data-theme="light" id="scr2">
+<div class="col-status">
+<span class="st-time">22:36</span>
+<div class="st-rule" aria-hidden="true"></div>
+<div class="st-grow"></div>
+<div class="st-icons">
+<svg width="12" height="10" viewBox="0 0 13 10" title="WiFi"><path d="M6.5 9 L9 6 A4 4 0 0 0 4 6 Z" fill="currentColor"/><path d="M6.5 6 L9.8 2.6 A6 6 0 0 0 3.2 2.6 Z" fill="currentColor"/></svg>
+<svg width="18" height="10" viewBox="0 0 22 10" title="电池使用中"><rect x="0.5" y="1" width="16" height="8" rx="1.5" fill="none" stroke="currentColor"/><rect x="17.2" y="3.5" width="2.4" height="3" rx="0.5" fill="currentColor"/><rect x="2" y="2.5" width="11.5" height="5" rx="0.6" fill="currentColor"/></svg>
+<span class="st-batt">76%</span>
+</div>
+</div>
+<div class="col-mid">
+<div class="card">
+<div class="title"><span class="brand">GLM</span><span class="dot" title="运行中"></span></div>
+<div class="metric">
+<div class="lblrow"><span class="k win">5h</span><span class="tail"><span class="reset">2h08m</span><span class="v">12%</span></span></div>
+<div class="bar"><div class="fill" data-pct="12"></div></div>
+</div>
+<div class="metric">
+<div class="lblrow"><span class="k win">7d</span><span class="tail"><span class="reset">3d</span><span class="v">44%</span></span></div>
+<div class="bar"><div class="fill" data-pct="44"></div></div>
+</div>
+</div>
+<div class="card">
+<div class="title"><span class="brand">CURSOR</span><span class="reset">30d</span></div>
+<div class="metric">
+<div class="lblrow"><span class="k">composer &amp; grok</span><span class="tail"><span class="v">4%</span></span></div>
+<div class="bar"><div class="fill" data-pct="4"></div></div>
+</div>
+<div class="metric">
+<div class="lblrow"><span class="k">other</span><span class="tail"><span class="v">0%</span></span></div>
+<div class="bar"><div class="fill" data-pct="0"></div></div>
+</div>
+</div>
+</div>
+<div class="petzone" title="点击切换深/浅主题">
+<svg class="pet" width="150" height="120" viewBox="0 0 120 96" xmlns="http://www.w3.org/2000/svg">
+<ellipse cx="60" cy="56" rx="30" ry="21" fill="#f0805a"/>
+<g class="armL">
+<path d="M30 52 Q16 50 12 40 Q22 36 28 42 Q26 36 30 34 Q36 40 34 48 Z" fill="#f0805a"/>
+<path d="M12 40 Q10 38 12 36" fill="none" stroke="#22262e" stroke-width="1.6" stroke-linecap="round"/>
+</g>
+<g class="armR">
+<path d="M90 52 Q104 50 108 40 Q98 36 92 42 Q94 36 90 34 Q84 40 86 48 Z" fill="#f0805a"/>
+<path d="M108 40 Q110 38 108 36" fill="none" stroke="#22262e" stroke-width="1.6" stroke-linecap="round"/>
+</g>
+<line x1="52" y1="38" x2="50" y2="28" stroke="#f0805a" stroke-width="4" stroke-linecap="round"/>
+<line x1="68" y1="38" x2="70" y2="28" stroke="#f0805a" stroke-width="4" stroke-linecap="round"/>
+<circle cx="50" cy="25" r="8" fill="#ffffff"/>
+<circle cx="70" cy="25" r="8" fill="#ffffff"/>
+<circle cx="51" cy="26" r="3.4" fill="#22262e"/>
+<circle cx="71" cy="26" r="3.4" fill="#22262e"/>
+<path d="M54 62 Q60 67 66 62" fill="none" stroke="#22262e" stroke-width="2" stroke-linecap="round"/>
+<path d="M34 68 Q44 76 54 74" fill="none" stroke="#f0805a" stroke-width="3.4" stroke-linecap="round"/>
+<path d="M86 68 Q76 76 66 74" fill="none" stroke="#f0805a" stroke-width="3.4" stroke-linecap="round"/>
+</svg>
+</div>
+</div>
+</div>
+<figcaption><b>浅色 · 电池供电</b>（实心电量 + 百分比，无闪电）</figcaption>
+<div class="hint">点击桌宠切换深色</div>
+</figure>
+
+</div>
+
+<div class="sec">
+<h2>分区与像素（1:1）</h2>
+<div class="grid">
+<div class="panel">
+<h3>列宽</h3>
+<table>
+<tr><td>内边距</td><td class="px">6</td></tr>
+<tr><td>状态列</td><td class="px">80 × 160：时间居中、短分隔线 52px、中部预留、底 WiFi+电源</td></tr>
+<tr><td>额度列</td><td class="px">372 × 160（两卡 78，间距 4）</td></tr>
+<tr><td>桌宠</td><td class="px">160 × 160 正方形；动画约 150 × 120 居中</td></tr>
+<tr><td>验算</td><td class="px">6+80+8+372+8+160+6 = 640</td></tr>
+</table>
+</div>
+<div class="panel">
+<h3>卡内文案</h3>
+<table>
+<tr><td>GLM</td><td class="px">左 <code>5h</code> / <code>7d</code>（同宽简写）；右倒计时 + 百分比</td></tr>
+<tr><td>CURSOR</td><td class="px">左 <code>composer &amp; grok</code> / <code>other</code>；右百分比；标题右 30d</td></tr>
+<tr><td>卡底</td><td class="px">padding-bottom 8px，末条不贴边</td></tr>
+</table>
+</div>
+<div class="panel">
+<h3>电源图标</h3>
+<table>
+<tr><td>USB 充电</td><td>电池框 + 闪电 + 百分比（深色稿）</td></tr>
+<tr><td>电池供电</td><td>电池框 + 电量填充 + 百分比（浅色稿）</td></tr>
+<tr><td>固件</td><td>LVGL <code>LV_SYMBOL_CHARGE</code> / <code>LV_SYMBOL_BATTERY_*</code></td></tr>
+</table>
+<div class="ico-row">
+<svg width="18" height="10" viewBox="0 0 22 10"><rect x="0.5" y="1" width="16" height="8" rx="1.5" fill="none" stroke="currentColor"/><rect x="17.2" y="3.5" width="2.4" height="3" rx="0.5" fill="currentColor"/><polygon points="9.2,2.2 6.6,5.5 8.6,5.5 7.2,8 11.4,4.3 9.2,4.3" fill="currentColor"/></svg>
+充电中
+<svg width="18" height="10" viewBox="0 0 22 10"><rect x="0.5" y="1" width="16" height="8" rx="1.5" fill="none" stroke="currentColor"/><rect x="17.2" y="3.5" width="2.4" height="3" rx="0.5" fill="currentColor"/><rect x="2" y="2.5" width="11.5" height="5" rx="0.6" fill="currentColor"/></svg>
+电池 76%
+</div>
+</div>
+</div>
+<div class="note">
+<b>颜色</b>：绿 / clawd 橙 / 红。屏上无汉字（失败态写 <code>fail</code>）。百分比一律右对齐；倒计时紧挨百分比左侧。
+</div>
+</div>
+</div>
+<script>
+function tone(pct){
+  if (pct >= 90) return "bad";
+  if (pct >= 70) return "warn";
+  return "ok";
+}
+document.querySelectorAll(".fill[data-pct]").forEach(function(el){
+  var pct = Number(el.getAttribute("data-pct")) || 0;
+  el.style.width = pct + "%";
+  el.setAttribute("data-tone", tone(pct));
+});
+["scr1","scr2"].forEach(function(id){
+  var el = document.getElementById(id);
+  el.querySelector(".petzone").addEventListener("click", function(){
+    el.setAttribute("data-theme", el.getAttribute("data-theme") === "dark" ? "light" : "dark");
+  });
+});
+</script>
+</body>
+</html>

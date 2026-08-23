@@ -1,0 +1,11 @@
+.env
+server/node_modules/
+firmware/.pio
+firmware/include/secrets.h
+firmware/src/pet_frames.bin
+firmware/src/pet_blob.S
+firmware/lib/lvgl/
+*.log
+.idea/
+.workbuddy/
+**/__pycache__/
