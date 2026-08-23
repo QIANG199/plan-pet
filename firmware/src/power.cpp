@@ -334,7 +334,24 @@ void power_read(bool *charging, int *pct) {
   if (p < 0) p = 0;
   if (p > 100) p = 100;
 
-  if (shownPct < 0 || p - shownPct >= 2 || shownPct - p >= 2) {
+  /* No fuel-gauge chip on this board, so the percentage is voltage-only and
+   * charge current lifts the terminal voltage (~30mV near full). Freeze the
+   * last rested reading while plugged so plug/unplug never disagree; on
+   * unplug the EMA glides the estimate back within seconds. */
+  static bool lastUsb = false;
+  static bool hold = false;
+  static int heldPct = -2;
+
+  if (usb && !lastUsb) {
+    hold = true;
+    heldPct = shownPct >= 0 ? shownPct : p;
+  }
+  if (!usb) hold = false;
+  lastUsb = usb;
+
+  if (hold) {
+    shownPct = heldPct;
+  } else if (shownPct < 0 || p - shownPct >= 2 || shownPct - p >= 2) {
     shownPct = p;
   }
   *pct = shownPct;
