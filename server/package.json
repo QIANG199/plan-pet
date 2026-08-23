@@ -1,8 +1,8 @@
 {
-  "name": "desktop-pet-server",
+  "name": "plan-pet-server",
   "private": true,
   "version": "0.1.0",
-  "description": "PC relay for the desktop quota panel",
+  "description": "PC relay for PlanPet (desktop quota panel + clawd pet)",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

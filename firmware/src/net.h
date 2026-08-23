@@ -19,6 +19,8 @@ struct Snapshot {
   time_t cycleEnd;
   String petAgent;
   String petState;
+  bool glmDot;
+  bool curDot;
   bool fresh;
 };
 

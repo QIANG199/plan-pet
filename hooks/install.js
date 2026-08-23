@@ -40,28 +40,37 @@ function writeJson(file, data) {
   fs.writeFileSync(file, JSON.stringify(data, null, 2) + "\n", "utf8");
 }
 
-function cursorCommand() {
-  return `cmd /d /s /c ""${nodeBin}" "${cursorHook}""`;
+function cursorCommand(event) {
+  // Cursor on Windows often delivers empty stdin; the event name in argv is enough
+  // for the pet state machine. Direct node.exe (no nested cmd).
+  return `"${nodeBin}" "${cursorHook}" ${event}`;
 }
 
 function installCursor() {
   const file = path.join(os.homedir(), ".cursor", "hooks.json");
   const data = readJson(file, { version: 1, hooks: {} });
   if (!data.hooks || typeof data.hooks !== "object") data.hooks = {};
-  const cmd = cursorCommand();
   let added = 0;
+  let updated = 0;
   for (const event of CURSOR_EVENTS) {
     if (!Array.isArray(data.hooks[event])) data.hooks[event] = [];
-    const already = data.hooks[event].some(
+    const cmd = cursorCommand(event);
+    const idx = data.hooks[event].findIndex(
       (item) => item && typeof item.command === "string" && item.command.includes("desktop-pet/hooks/cursor-hook.js")
     );
-    if (already) continue;
+    if (idx >= 0) {
+      if (data.hooks[event][idx].command !== cmd) {
+        data.hooks[event][idx] = { command: cmd };
+        updated++;
+      }
+      continue;
+    }
     data.hooks[event].push({ command: cmd });
     added++;
   }
   if (data.version == null) data.version = 1;
   writeJson(file, data);
-  console.log(`[cursor] ${file}  (+${added} events)`);
+  console.log(`[cursor] ${file}  (+${added} events, ~${updated} updated)`);
 }
 
 function installZcode() {

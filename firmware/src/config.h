@@ -12,3 +12,5 @@ String config_host();
 uint16_t config_port();
 bool config_dark();
 void config_set_dark(bool dark);
+uint8_t config_bright();
+void config_set_bright(uint8_t v);

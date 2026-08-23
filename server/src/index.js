@@ -3,6 +3,7 @@ const { execFile } = require("child_process");
 const { Bonjour } = require("bonjour-service");
 const env = require("./env");
 const { fetchQuota } = require("./glm");
+const { fetchQuota: fetchCursorQuota } = require("./cursor");
 const { createPet } = require("./pet");
 
 const pet = createPet();
@@ -48,6 +49,18 @@ async function refreshGlm() {
   } catch (err) {
     cache.glm = { ok: false };
     console.error("[glm] fail", err.message);
+  }
+}
+
+async function refreshCursor() {
+  try {
+    cache.cursor = await fetchCursorQuota();
+    console.log(
+      `[cursor] ok  auto=${cache.cursor.auto.pct}%  api=${cache.cursor.api.pct}%`
+    );
+  } catch (err) {
+    cache.cursor = { ok: false };
+    console.error("[cursor] fail", err.message);
   }
 }
 
@@ -169,5 +182,7 @@ server.listen(env.port, env.host, async () => {
   tryFirewall();
   advertiseMdns();
   await refreshGlm();
+  await refreshCursor();
   setInterval(refreshGlm, 5 * 60 * 1000).unref();
+  setInterval(refreshCursor, 5 * 60 * 1000).unref();
 });

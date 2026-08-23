@@ -27,16 +27,29 @@ function loadEnv() {
 function readStdinJson() {
   return new Promise((resolve) => {
     const chunks = [];
+    let settled = false;
+    function done(value) {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    }
     process.stdin.setEncoding("utf8");
-    process.stdin.on("data", (c) => chunks.push(c));
-    process.stdin.on("end", () => {
+    process.stdin.on("data", (c) => {
+      chunks.push(c);
       try {
-        resolve(JSON.parse(chunks.join("") || "{}"));
+        done(JSON.parse(chunks.join("")));
       } catch {
-        resolve({});
+        // wait for a complete JSON object; Cursor may keep stdin open
       }
     });
-    process.stdin.on("error", () => resolve({}));
+    process.stdin.on("end", () => {
+      try {
+        done(JSON.parse(chunks.join("") || "{}"));
+      } catch {
+        done({});
+      }
+    });
+    process.stdin.on("error", () => done({}));
   });
 }
 
@@ -79,6 +92,7 @@ function postEvent(body) {
 
 function runHook({ stdoutLine, mapPayload }) {
   const SAFETY_MS = 800;
+  const HARD_MS = 5000;
   let wrote = false;
   let exited = false;
 
@@ -95,18 +109,34 @@ function runHook({ stdoutLine, mapPayload }) {
     process.exit(0);
   }
 
-  const safety = setTimeout(() => finish(stdoutLine({})), SAFETY_MS);
+  let posted = false;
+  async function emit(payload) {
+    const mapped = mapPayload(payload);
+    writeOut(stdoutLine(payload));
+    if (mapped && !posted) {
+      posted = true;
+      await postEvent(mapped);
+    }
+  }
+
+  // argv (Cursor) is enough to POST even when Windows delivers empty stdin.
+  const early = emit({});
+
+  const safety = setTimeout(() => writeOut(stdoutLine({})), SAFETY_MS);
+  const hard = setTimeout(() => finish(stdoutLine({})), HARD_MS);
 
   readStdinJson()
     .then(async (payload) => {
-      const mapped = mapPayload(payload);
-      writeOut(stdoutLine(payload));
-      if (mapped) await postEvent(mapped);
+      await early;
+      await emit(payload);
       clearTimeout(safety);
+      clearTimeout(hard);
       finish(null);
     })
-    .catch(() => {
+    .catch(async () => {
+      await early;
       clearTimeout(safety);
+      clearTimeout(hard);
       finish(stdoutLine({}));
     });
 }

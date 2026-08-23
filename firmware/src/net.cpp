@@ -2,6 +2,7 @@
 #include "config.h"
 #include "ui.h"
 #include "lvgl_port.h"
+#include "rtc.h"
 #include <Network.h>
 #include <WiFi.h>
 #include <ESPmDNS.h>
@@ -11,6 +12,8 @@
 static Snapshot snap;
 static uint32_t lastPoll;
 static uint32_t lastNtpTry;
+static uint32_t lastWifiTry;
+static uint32_t wifiBackoff = 2000;
 static bool ntpOk;
 static bool mdnsReady;
 static int lastHttp = -999;
@@ -47,6 +50,8 @@ static void parseDash(const String &body) {
 
   snap.petAgent = doc["pet"]["agent"] | "";
   snap.petState = doc["pet"]["state"] | "idle";
+  snap.glmDot = doc["pet"]["dots"]["zcode"] | false;
+  snap.curDot = doc["pet"]["dots"]["cursor"] | false;
   snap.fresh = true;
 }
 
@@ -107,9 +112,6 @@ static void pollOnce() {
   IPAddress ip;
   if (!resolveHost(ip)) {
     Serial.println("dns fail " + config_host() + " (try HOST <pc-ip>)");
-    snap.glmOk = false;
-    snap.cursorOk = false;
-    snap.fresh = true;
     lastHttp = -2;
     return;
   }
@@ -122,10 +124,6 @@ static void pollOnce() {
   int code = http.GET();
   if (code == 200) {
     parseDash(http.getString());
-  } else {
-    snap.glmOk = false;
-    snap.cursorOk = false;
-    snap.fresh = true;
   }
   http.end();
   if (code != lastHttp || code != 200) {
@@ -142,7 +140,10 @@ void net_reconnect() {
   String s = config_wifi_ssid();
   if (!s.length()) return;
   WiFi.disconnect();
+  WiFi.setAutoReconnect(true);
   WiFi.begin(s.c_str(), config_wifi_pass().c_str());
+  wifiBackoff = 2000;
+  lastWifiTry = millis();
   Serial.println("wifi connecting " + s);
 }
 
@@ -157,11 +158,22 @@ void net_begin() {
 
 void net_loop() {
   uint32_t now = millis();
+  if (WiFi.status() != WL_CONNECTED && config_wifi_ssid().length()) {
+    if (now - lastWifiTry >= wifiBackoff) {
+      lastWifiTry = now;
+      WiFi.reconnect();
+      Serial.printf("wifi retry backoff=%lu\n", (unsigned long)wifiBackoff);
+      if (wifiBackoff < 60000) wifiBackoff *= 2;
+    }
+  } else if (WiFi.status() == WL_CONNECTED) {
+    wifiBackoff = 2000;
+  }
   if (WiFi.status() == WL_CONNECTED && !ntpOk && now - lastNtpTry > 10000) {
     lastNtpTry = now;
     configTzTime("CST-8", "ntp.aliyun.com", "pool.ntp.org");
     ntpOk = true;
   }
+  rtc_save_if_synced();
   if (now - lastPoll < 2000) return;
   lastPoll = now;
   pollOnce();

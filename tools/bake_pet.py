@@ -1,13 +1,25 @@
-"""Bake clawd GIFs onto dark/light cards as RGB565 frames for the ESP32."""
+"""Bake clawd GIFs onto dark/light cards as RGB565 frames for the ESP32.
+
+Source GIFs: Clawd on Desk (https://github.com/rullerzhou-afk/clawd-on-desk)
+  assets/gif/ — artwork is NOT covered by that repo's AGPL; see assets/LICENSE.
+  Default directory: D:\\develop\\clawd-on-desk\\assets\\gif
+  Override: environment variable CLAWD_GIF_DIR
+"""
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from PIL import Image, ImageSequence
 
 ROOT = Path(__file__).resolve().parents[1]
-GIF_DIR = Path(r"D:\develop\clawd-on-desk\assets\gif")
+GIF_DIR = Path(
+    os.environ.get(
+        "CLAWD_GIF_DIR",
+        r"D:\develop\clawd-on-desk\assets\gif",
+    )
+)
 OUT_BIN = ROOT / "firmware" / "src" / "pet_frames.bin"
 OUT_S = ROOT / "firmware" / "src" / "pet_blob.S"
 
@@ -33,7 +45,7 @@ STATE_GIF = {
     "poke": "clawd-react-double-jump.gif",
 }
 THEMES = (
-    ("dark", (0x1A, 0x1E, 0x26)),
+    ("dark", (0x00, 0x00, 0x00)),
     ("light", (0xFF, 0xFF, 0xFF)),
 )
 

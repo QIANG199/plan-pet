@@ -1,6 +1,7 @@
 #include "config.h"
 #include "net.h"
 #include "ui.h"
+#include "lcd_bl_bsp/lcd_bl_pwm_bsp.h"
 #include <Preferences.h>
 #include "secrets.h"
 
@@ -8,7 +9,12 @@ static Preferences prefs;
 static String ssid, pass, token, host;
 static uint16_t port = SECRET_PORT;
 static bool dark = true;
+static uint8_t bright = 255;
 static String lineBuf;
+
+static void applyBright() {
+  setUpduty((uint16_t)(255 - bright));
+}
 
 static void load() {
   ssid = prefs.getString("ssid", SECRET_WIFI_SSID);
@@ -17,6 +23,8 @@ static void load() {
   host = prefs.getString("host", SECRET_HOST);
   port = prefs.getUShort("port", SECRET_PORT);
   dark = prefs.getBool("dark", true);
+  bright = (uint8_t)prefs.getUChar("bright", 255);
+  if (bright < 8) bright = 8;
 }
 
 static void save() {
@@ -31,6 +39,7 @@ static void printCfg() {
   Serial.println("ssid=" + ssid);
   Serial.println("host=" + host + ":" + String(port));
   Serial.println("token=" + String(token.length() ? "(set)" : "(empty)"));
+  Serial.printf("bright=%u\n", (unsigned)bright);
 }
 
 static void handleLine(String line) {
@@ -63,6 +72,14 @@ static void handleLine(String line) {
     arg.toLowerCase();
     ui_set_pet_override(arg.c_str());
     Serial.println(arg.length() ? "ok pet " + arg : "ok pet auto");
+  } else if (cmd == "BRIGHT") {
+    if (arg.length()) {
+      int v = arg.toInt();
+      if (v < 8) v = 8;
+      if (v > 255) v = 255;
+      config_set_bright((uint8_t)v);
+    }
+    Serial.printf("ok bright %u\n", (unsigned)bright);
   } else if (cmd == "SHOW") {
     printCfg();
   } else if (cmd == "HELP") {
@@ -71,6 +88,7 @@ static void handleLine(String line) {
     Serial.println("TOKEN <panel-token>");
     Serial.println("HOST <desktop-pet.local or pc-ip>");
     Serial.println("PET <idle|thinking|typing|happy|error|sleeping|auto>");
+    Serial.println("BRIGHT <8-255>");
     Serial.println("SHOW");
   } else {
     Serial.println("unknown; HELP");
@@ -80,7 +98,8 @@ static void handleLine(String line) {
 void config_begin() {
   prefs.begin("panel", false);
   load();
-  Serial.println("serial: WIFI / PASS / TOKEN / HOST / PET / SHOW");
+  applyBright();
+  Serial.println("serial: WIFI / PASS / TOKEN / HOST / PET / BRIGHT / SHOW");
   printCfg();
 }
 
@@ -107,4 +126,13 @@ bool config_dark() { return dark; }
 void config_set_dark(bool next) {
   dark = next;
   prefs.putBool("dark", dark);
+}
+
+uint8_t config_bright() { return bright; }
+
+void config_set_bright(uint8_t v) {
+  if (v < 8) v = 8;
+  bright = v;
+  prefs.putUChar("bright", bright);
+  applyBright();
 }
