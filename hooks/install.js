@@ -33,6 +33,9 @@ function cursorCommand(event) {
 }
 
 function installCursor() {
+  // The idempotency checks below match the REPO FOLDER PATH (…/desktop-pet/hooks/…),
+  // NOT the mDNS name — the mDNS service is called plan-pet since the rename.
+  // Do not "modernise" these strings or reinstall detection breaks.
   const file = path.join(os.homedir(), ".cursor", "hooks.json");
   const data = readJson(file, { version: 1, hooks: {} });
   if (!data.hooks || typeof data.hooks !== "object") data.hooks = {};

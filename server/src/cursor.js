@@ -19,7 +19,7 @@ function vscdbPath() {
 function readSession() {
   const src = vscdbPath();
   if (!fs.existsSync(src)) throw new Error("Cursor state.vscdb not found (sign in to Cursor)");
-  const tmp = path.join(os.tmpdir(), "desktop-pet-state.vscdb");
+  const tmp = path.join(os.tmpdir(), "plan-pet-state.vscdb");
   fs.copyFileSync(src, tmp);
   const db = new DatabaseSync(tmp, { readOnly: true });
   try {

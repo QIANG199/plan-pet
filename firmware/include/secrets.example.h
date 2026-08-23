@@ -10,7 +10,7 @@
 #define SECRET_PANEL_TOKEN ""
 #endif
 #ifndef SECRET_HOST
-#define SECRET_HOST "desktop-pet.local"
+#define SECRET_HOST "plan-pet.local"
 #endif
 #ifndef SECRET_PORT
 #define SECRET_PORT 3737

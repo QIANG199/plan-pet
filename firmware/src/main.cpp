@@ -32,7 +32,7 @@ void setup() {
   power_relatch();
   rtc_begin();
   net_begin();
-  Serial.println("desktop-pet firmware");
+  Serial.println("plan-pet firmware");
   Serial.printf("psram %u bytes\n", ESP.getPsramSize());
 }
 

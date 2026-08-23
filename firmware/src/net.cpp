@@ -87,7 +87,7 @@ static bool resolveHost(IPAddress &ip) {
     for (int i = 0; i < n; i++) {
       const String inst = MDNS.instanceName(i);
       const String hn = MDNS.hostname(i);
-      if (!inst.equalsIgnoreCase("desktop-pet") && !hn.startsWith(label)) continue;
+      if (!inst.equalsIgnoreCase("plan-pet") && !hn.startsWith(label)) continue;
       IPAddress found = MDNS.address(i);
       if (usableV4(found)) {
         ip = found;

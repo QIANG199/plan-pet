@@ -4,7 +4,7 @@
 
 桌宠贴图来自开源项目 **[Clawd on Desk](https://github.com/rullerzhou-afk/clawd-on-desk)**（GIF 不进本仓库，见 [致谢](docs/credits.md)）。
 
-GitHub：[QIANG199/plan-pet](https://github.com/QIANG199/plan-pet)（源码 [Apache-2.0](LICENSE)）。局域网发现仍用 mDNS **`desktop-pet.local`**（已烧过的板不用改 Host）。
+GitHub：[QIANG199/plan-pet](https://github.com/QIANG199/plan-pet)（源码 [Apache-2.0](LICENSE)）。局域网发现用 mDNS **`plan-pet.local`**。旧固件若存的是 `desktop-pet.local`，需重烧固件并把 HOST 改为 `plan-pet.local`（网页 `/setup`、串口或触屏设置页均可）；直接填电脑 IP 的板子不受影响。
 
 电脑上跑一个很小的 **中转服务**，面板只负责显示。Cursor 登录态和 Z.ai Key 都留在电脑里，不进固件。
 
@@ -25,7 +25,7 @@ GitHub：[QIANG199/plan-pet](https://github.com/QIANG199/plan-pet)（源码 [Apa
 硬件：微雪 **ESP32-S3-Touch-LCD-3.49** A 款带 18650（SKU 32373），物理 172×640，横屏按 640×172 来画。
 
 ```
- 电脑（中转服务 :3737，mDNS desktop-pet.local）
+ 电脑（中转服务 :3737，mDNS plan-pet.local）
    GLM API + Cursor 账单 + hooks 事件
                     ↓  每 2 秒 GET /api/dashboard
  额度面板（ESP32，只渲染快照）
@@ -56,7 +56,7 @@ npm install
 npm start
 ```
 
-看到类似 `[mdns] advertised desktop-pet.local` 即在局域网广播。本机验收（把令牌换进去）：
+看到类似 `[mdns] advertised plan-pet.local` 即在局域网广播。本机验收（把令牌换进去）：
 
 ```
 http://127.0.0.1:3737/api/dashboard?token=<PANEL_TOKEN>
@@ -72,7 +72,7 @@ http://127.0.0.1:3737/api/dashboard?token=<PANEL_TOKEN>
 server\scripts\allow-firewall.cmd
 ```
 
-规则名：`desktop-pet-3737`。以后重装系统再跑一次即可。
+规则名：`plan-pet-3737`。以后重装系统再跑一次即可。
 
 ### 3. 开机自启（可选）
 
@@ -97,7 +97,7 @@ node hooks/install.js
 ### 5. 面板日常
 
 - 日常插 USB 供电；18650 是备用。电脑要开着，中转服务要在跑。
-- 同一局域网。面板用 mDNS 找 `desktop-pet.local`，不要把会变的电脑 IP 当成长期身份。
+- 同一局域网。面板用 mDNS 找 `plan-pet.local`，不要把会变的电脑 IP 当成长期身份。
 - 若解析失败，串口可临时 `HOST <电脑当前IP>`，这是逃生口，不是默认做法。
 - 背面 **RESET** 键是硬件复位线，固件读不到；**BOOT** 键已由固件接管（换肤 / 设置 / 重启）。
 
@@ -119,7 +119,7 @@ http://127.0.0.1:3737/setup
 WIFI <ssid>
 PASS <password>
 TOKEN <面板令牌>
-HOST desktop-pet.local
+HOST plan-pet.local
 PORT <1-65535>
 BRIGHT 8-255
 OFF          触发关机倒计时（再按 PWR 可取消）

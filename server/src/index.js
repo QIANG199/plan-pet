@@ -187,14 +187,14 @@ function advertiseMdns() {
   try {
     const bonjour = new Bonjour();
     bonjour.publish({
-      name: "desktop-pet",
-      host: "desktop-pet.local",
+      name: "plan-pet",
+      host: "plan-pet.local",
       type: "http",
       port: env.port,
       disableIPv6: true,
       txt: { path: "/api/dashboard" },
     });
-    console.log("[mdns] advertised desktop-pet.local");
+    console.log("[mdns] advertised plan-pet.local");
   } catch (err) {
     console.error("[mdns] skip", err.message);
   }
@@ -209,7 +209,7 @@ function tryFirewall() {
       "firewall",
       "add",
       "rule",
-      "name=desktop-pet-3737",
+      "name=plan-pet-" + String(env.port),
       "dir=in",
       "action=allow",
       "protocol=TCP",

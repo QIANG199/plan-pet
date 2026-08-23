@@ -119,7 +119,7 @@ static void handleLine(String line) {
     Serial.println("WIFI <ssid>");
     Serial.println("PASS <password>");
     Serial.println("TOKEN <panel-token>");
-    Serial.println("HOST <desktop-pet.local or pc-ip>");
+    Serial.println("HOST <plan-pet.local or pc-ip>");
     Serial.println("PORT <1-65535>");
     Serial.println("PET <idle|thinking|typing|happy|error|sleeping|auto>");
     Serial.println("BRIGHT <8-255>");

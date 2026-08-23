@@ -58,7 +58,7 @@ python -m platformio device monitor
 WIFI <ssid>
 PASS <password>
 TOKEN <面板令牌>
-HOST desktop-pet.local
+HOST plan-pet.local
 BRIGHT 8-255
 OFF          触发关机倒计时（再按 PWR 可取消）
 REBOOT       重启
