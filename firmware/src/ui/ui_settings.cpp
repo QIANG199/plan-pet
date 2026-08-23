@@ -281,18 +281,20 @@ static lv_obj_t *mk_setting_row(lv_obj_t *parent, const char *key,
 static void build_header(lv_obj_t *scr) {
   lv_obj_t *hd = lv_obj_create(scr);
   ui_no_scroll(hd);
-  lv_obj_set_size(hd, lv_pct(100), 24);
+  lv_obj_set_size(hd, lv_pct(100), 30);
   lv_obj_set_style_bg_opa(hd, LV_OPA_TRANSP, 0);
   lv_obj_set_style_border_width(hd, 0, 0);
   lv_obj_set_style_pad_all(hd, 0, 0);
 
-  hdBack = mk_pill(hd, 56, onBack);
+  hdBack = mk_pill(hd, 66, onBack);
+  lv_obj_set_height(hdBack, 26);
+  lv_obj_set_ext_click_area(hdBack, 4);
   lv_obj_align(hdBack, LV_ALIGN_LEFT_MID, 2, 0);
   lv_obj_t *backLbl = mk_cjk_lbl(hdBack, "\xe8\xbf\x94\xe5\x9b\x9e"); /* 返回 */
   lv_obj_center(backLbl);
 
   hdTitle = mk_cjk_lbl(hd, "\xe8\xae\xbe\xe7\xbd\xae"); /* 设置 */
-  lv_obj_align(hdTitle, LV_ALIGN_LEFT_MID, 66, 0);
+  lv_obj_align(hdTitle, LV_ALIGN_LEFT_MID, 76, 0);
 
   hdStatDot = lv_obj_create(hd);
   ui_no_scroll(hdStatDot);
@@ -300,10 +302,10 @@ static void build_header(lv_obj_t *scr) {
   lv_obj_set_style_radius(hdStatDot, LV_RADIUS_CIRCLE, 0);
   lv_obj_set_style_bg_color(hdStatDot, UI_OK, 0);
   lv_obj_set_style_border_width(hdStatDot, 0, 0);
-  lv_obj_align(hdStatDot, LV_ALIGN_RIGHT_MID, -100, 0);
+  lv_obj_align(hdStatDot, LV_ALIGN_RIGHT_MID, -104, 0);
 
   hdStatSsid = ui_mk_lbl(hd, &lv_font_montserrat_12, lv_color_white());
-  lv_obj_set_width(hdStatSsid, 96);
+  lv_obj_set_width(hdStatSsid, 98);
   lv_label_set_long_mode(hdStatSsid, LV_LABEL_LONG_DOT);
   lv_obj_align(hdStatSsid, LV_ALIGN_RIGHT_MID, 0, 0);
 }
@@ -322,20 +324,22 @@ static void build_main(lv_obj_t *scr) {
   /* WiFi card */
   lv_obj_t *wifiCard = lv_obj_create(cols);
   style_card_flat(wifiCard);
-  lv_obj_set_size(wifiCard, 368, 136);
+  lv_obj_set_size(wifiCard, 368, 126);
   lv_obj_set_flex_flow(wifiCard, LV_FLEX_FLOW_COLUMN);
   lv_obj_set_style_pad_all(wifiCard, 6, 0);
   lv_obj_set_style_pad_row(wifiCard, 3, 0);
 
   lv_obj_t *capRow = lv_obj_create(wifiCard);
   ui_no_scroll(capRow);
-  lv_obj_set_size(capRow, lv_pct(100), 22);
+  lv_obj_set_size(capRow, lv_pct(100), 24);
   lv_obj_set_style_bg_opa(capRow, LV_OPA_TRANSP, 0);
   lv_obj_set_style_border_width(capRow, 0, 0);
   lv_obj_set_style_pad_all(capRow, 0, 0);
   wifiCap = mk_cjk_lbl(capRow, "WiFi \xe7\xbd\x91\xe7\xbb\x9c"); /* WiFi 网络 */
   lv_obj_align(wifiCap, LV_ALIGN_LEFT_MID, 2, 0);
-  rescanBtn = mk_pill(capRow, 86, onRescan);
+  rescanBtn = mk_pill(capRow, 100, onRescan);
+  lv_obj_set_height(rescanBtn, 24);
+  lv_obj_set_ext_click_area(rescanBtn, 4);
   lv_obj_align(rescanBtn, LV_ALIGN_RIGHT_MID, 0, 0);
   rescanLbl = mk_cjk_lbl(rescanBtn, "\xe9\x87\x8d\xe6\x96\xb0\xe6\x89\xab\xe6\x8f\x8f"); /* 重新扫描 */
   lv_obj_center(rescanLbl);
@@ -357,7 +361,7 @@ static void build_main(lv_obj_t *scr) {
   /* Server card */
   lv_obj_t *srvCard = lv_obj_create(cols);
   style_card_flat(srvCard);
-  lv_obj_set_size(srvCard, 258, 136);
+  lv_obj_set_size(srvCard, 258, 126);
   lv_obj_set_flex_flow(srvCard, LV_FLEX_FLOW_COLUMN);
   lv_obj_set_style_pad_all(srvCard, 8, 0);
   lv_obj_set_style_pad_row(srvCard, 2, 0);
@@ -370,7 +374,7 @@ static void build_main(lv_obj_t *scr) {
 
   saveBtn = lv_btn_create(srvCard);
   style_hit(saveBtn);
-  lv_obj_set_size(saveBtn, lv_pct(100), 26);
+  lv_obj_set_size(saveBtn, lv_pct(100), 28);
   lv_obj_add_event_cb(saveBtn, onSave, LV_EVENT_CLICKED, nullptr);
   saveLbl = mk_cjk_lbl(saveBtn, "\xe4\xbf\x9d\xe5\xad\x98\xe5\xb9\xb6\xe8\xbf\x94\xe5\x9b\x9e"); /* 保存并返回 */
   lv_obj_center(saveLbl);
@@ -389,7 +393,7 @@ static void build_editor(lv_obj_t *scr) {
 
   lv_obj_t *top = lv_obj_create(editPanel);
   ui_no_scroll(top);
-  lv_obj_set_size(top, lv_pct(100), 22);
+  lv_obj_set_size(top, lv_pct(100), 30);
   lv_obj_set_style_bg_opa(top, LV_OPA_TRANSP, 0);
   lv_obj_set_style_border_width(top, 0, 0);
   lv_obj_set_style_pad_all(top, 0, 0);
@@ -397,7 +401,8 @@ static void build_editor(lv_obj_t *scr) {
 
   edClose = lv_btn_create(top);
   style_hit(edClose);
-  lv_obj_set_size(edClose, 24, 20);
+  lv_obj_set_size(edClose, 34, 26);
+  lv_obj_set_ext_click_area(edClose, 5);
   lv_obj_align(edClose, LV_ALIGN_LEFT_MID, 0, 0);
   lv_obj_add_event_cb(edClose, onEdClose, LV_EVENT_CLICKED, nullptr);
   lv_obj_t *x = ui_mk_lbl(edClose, &lv_font_montserrat_14, lv_color_white());
@@ -405,14 +410,15 @@ static void build_editor(lv_obj_t *scr) {
   lv_obj_center(x);
 
   edTitle = ui_mk_lbl(top, &lv_font_montserrat_12, lv_color_white());
-  lv_obj_set_width(edTitle, 300);
+  lv_obj_set_width(edTitle, 280);
   lv_label_set_long_mode(edTitle, LV_LABEL_LONG_DOT);
-  lv_obj_align(edTitle, LV_ALIGN_LEFT_MID, 32, 0);
+  lv_obj_align(edTitle, LV_ALIGN_LEFT_MID, 42, 0);
 
   edEye = lv_btn_create(top);
   style_hit(edEye);
-  lv_obj_set_size(edEye, 26, 20);
-  lv_obj_align(edEye, LV_ALIGN_RIGHT_MID, -62, 0);
+  lv_obj_set_size(edEye, 36, 26);
+  lv_obj_set_ext_click_area(edEye, 5);
+  lv_obj_align(edEye, LV_ALIGN_RIGHT_MID, -80, 0);
   lv_obj_add_event_cb(edEye, onEye, LV_EVENT_CLICKED, nullptr);
   lv_obj_t *eye = ui_mk_lbl(edEye, &lv_font_montserrat_14, lv_color_white());
   lv_label_set_text(eye, LV_SYMBOL_EYE_OPEN);
@@ -420,7 +426,8 @@ static void build_editor(lv_obj_t *scr) {
 
   edGo = lv_btn_create(top);
   style_hit(edGo);
-  lv_obj_set_size(edGo, 58, 20);
+  lv_obj_set_size(edGo, 76, 26);
+  lv_obj_set_ext_click_area(edGo, 5);
   lv_obj_align(edGo, LV_ALIGN_RIGHT_MID, 0, 0);
   lv_obj_add_event_cb(edGo, onGo, LV_EVENT_CLICKED, nullptr);
   edGoLbl = mk_cjk_lbl(edGo, "\xe8\xbf\x9e\xe6\x8e\xa5"); /* 连接 */
@@ -459,7 +466,7 @@ static int bars_for(int32_t rssi) {
 static void add_placeholder_row(const char *txt) {
   lv_obj_t *ph = lv_obj_create(netList);
   ui_no_scroll(ph);
-  lv_obj_set_size(ph, lv_pct(100), 24);
+  lv_obj_set_size(ph, lv_pct(100), 26);
   lv_obj_set_style_radius(ph, 6, 0);
   lv_obj_set_style_border_width(ph, 0, 0);
   lv_obj_t *l = ui_mk_lbl(ph, &lv_font_montserrat_12, lv_color_white());
@@ -481,7 +488,7 @@ static void refresh_rows() {
   for (int i = 0; i < ssidCount; i++) {
     lv_obj_t *row = lv_btn_create(netList);
     style_hit(row);
-    lv_obj_set_size(row, lv_pct(100), 24);
+    lv_obj_set_size(row, lv_pct(100), 26);
     lv_obj_add_event_cb(row, onNet, LV_EVENT_CLICKED, (void *)(intptr_t)i);
 
     lv_obj_t *s = ui_mk_lbl(row, &lv_font_montserrat_12, lv_color_white());
