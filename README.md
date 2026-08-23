@@ -4,7 +4,7 @@
 
 桌宠贴图来自开源项目 **[Clawd on Desk](https://github.com/rullerzhou-afk/clawd-on-desk)**（GIF 不进本仓库，见 [致谢](docs/credits.md)）。
 
-GitHub：[QIANG199/plan-pet](https://github.com/QIANG199/plan-pet)。局域网发现仍用 mDNS **`desktop-pet.local`**（已烧过的板不用改 Host）。
+GitHub：[QIANG199/plan-pet](https://github.com/QIANG199/plan-pet)（源码 [Apache-2.0](LICENSE)）。局域网发现仍用 mDNS **`desktop-pet.local`**（已烧过的板不用改 Host）。
 
 电脑上跑一个很小的 **中转服务**，面板只负责显示。Cursor 登录态和 Z.ai Key 都留在电脑里，不进固件。
 
