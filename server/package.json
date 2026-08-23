@@ -5,7 +5,8 @@
   "description": "PC relay for the desktop quota panel",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "hooks:install": "node ../hooks/install.js"
   },
   "engines": {
     "node": ">=18"
