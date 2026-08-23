@@ -8,3 +8,5 @@ void ui_set_wifi(bool up);
 void ui_set_power(bool charging, int pct);
 void ui_tick_clock();
 void ui_set_pet_override(const char *state);
+void ui_toggle_theme();
+void ui_poll_power();

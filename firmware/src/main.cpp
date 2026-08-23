@@ -38,6 +38,8 @@ void loop() {
   net_loop();
   static uint32_t lastClock;
   static uint32_t lastPower;
+  static uint32_t lastKeyUi;
+  static uint8_t pendingReq = 0;
   uint32_t now = millis();
   if (now - lastClock > 1000) {
     lastClock = now;
@@ -53,6 +55,20 @@ void loop() {
     power_read(&charging, &pct);
     if (lvgl_port_lock(20)) {
       ui_set_power(charging, pct);
+      lvgl_port_unlock();
+    }
+  }
+  if (now - lastKeyUi > 100) {
+    lastKeyUi = now;
+    if (!pendingReq) pendingReq = power_take_request();
+    if (lvgl_port_lock(20)) {
+      if (pendingReq == KEY_REQ_THEME) {
+        ui_toggle_theme();
+        pendingReq = 0;
+      } else if (pendingReq != KEY_REQ_NONE) {
+        pendingReq = 0; /* settings request: handled once the settings page lands */
+      }
+      ui_poll_power();
       lvgl_port_unlock();
     }
   }

@@ -1,6 +1,7 @@
 #include "ui.h"
 #include "ui_internal.h"
 #include "config.h"
+#include "power.h"
 #include "bsp/lvgl_port.h"
 #include "lvgl.h"
 #include <Arduino.h>
@@ -13,6 +14,7 @@ lv_obj_t *glmTitle, *glmDot, *glmK1, *glmR1, *glmP1, *glmBar1;
 lv_obj_t *glmK2, *glmR2, *glmP2, *glmBar2;
 lv_obj_t *curTitle, *curDot, *curReset;
 lv_obj_t *curK1, *curP1, *curBar1, *curK2, *curP2, *curBar2;
+static lv_obj_t *ovlCap, *ovlBig, *ovlBar;
 
 static bool wifiOn = true;
 
@@ -44,12 +46,15 @@ static void applyTheme() {
   lv_obj_set_style_bg_color(glmBar2, p.track, LV_PART_MAIN);
   lv_obj_set_style_bg_color(curBar1, p.track, LV_PART_MAIN);
   lv_obj_set_style_bg_color(curBar2, p.track, LV_PART_MAIN);
+  lv_obj_set_style_text_color(ovlCap, p.ink2, 0);
+  lv_obj_set_style_bg_color(ovlBar, p.track, LV_PART_MAIN);
   ui_pet_show_frame();
   ui_set_wifi(wifiOn);
 }
 
 static void onTheme(lv_event_t *e) {
   LV_UNUSED(e);
+  if (power_phase() != POWER_NORMAL) return; /* key overlay is showing */
   config_set_dark(!config_dark());
   applyTheme();
 }
@@ -130,6 +135,28 @@ void ui_create() {
   lv_obj_set_style_pad_all(themeHit, 0, 0);
   lv_obj_add_flag(themeHit, LV_OBJ_FLAG_CLICKABLE);
   lv_obj_add_event_cb(themeHit, onTheme, LV_EVENT_CLICKED, nullptr);
+
+  /* Key-feedback overlay in the reserved mid area of the status card:
+   * caption ("OFF"/"REBOOT"), a big digit, and a hold-progress bar. */
+  ovlCap = ui_mk_lbl(statusCard, &lv_font_montserrat_12, lv_color_white());
+  lv_obj_set_width(ovlCap, lv_pct(100));
+  lv_obj_set_style_text_align(ovlCap, LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_align(ovlCap, LV_ALIGN_TOP_MID, 0, 38);
+  ovlBig = ui_mk_lbl(statusCard, &lv_font_montserrat_16, lv_color_white());
+  lv_obj_set_width(ovlBig, lv_pct(100));
+  lv_obj_set_style_text_align(ovlBig, LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_align(ovlBig, LV_ALIGN_TOP_MID, 0, 54);
+  ovlBar = lv_bar_create(statusCard);
+  ui_no_scroll(ovlBar);
+  lv_obj_set_size(ovlBar, 56, 4);
+  lv_obj_align(ovlBar, LV_ALIGN_TOP_MID, 0, 86);
+  lv_bar_set_range(ovlBar, 0, 1000);
+  lv_obj_set_style_radius(ovlBar, 2, 0);
+  lv_obj_set_style_radius(ovlBar, 2, LV_PART_INDICATOR);
+  lv_obj_set_style_bg_color(ovlBar, UI_WARN, LV_PART_INDICATOR);
+  lv_obj_add_flag(ovlCap, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_add_flag(ovlBig, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_add_flag(ovlBar, LV_OBJ_FLAG_HIDDEN);
 
   planCard = lv_obj_create(uiScr);
   lv_obj_set_pos(planCard, 94, 6);
@@ -287,4 +314,49 @@ void ui_tick_clock() {
   char buf[8];
   strftime(buf, sizeof(buf), "%H:%M", &t);
   lv_label_set_text(timeLbl, buf);
+}
+
+void ui_toggle_theme() {
+  if (power_phase() != POWER_NORMAL) return;
+  config_set_dark(!config_dark());
+  applyTheme();
+}
+
+void ui_poll_power() {
+  static PowerPhase lastPhase = POWER_NORMAL;
+  PowerPhase phase = power_phase();
+  if (phase != lastPhase) {
+    if (phase == POWER_NORMAL) {
+      lv_obj_add_flag(ovlCap, LV_OBJ_FLAG_HIDDEN);
+      lv_obj_add_flag(ovlBig, LV_OBJ_FLAG_HIDDEN);
+      lv_obj_add_flag(ovlBar, LV_OBJ_FLAG_HIDDEN);
+    }
+    lastPhase = phase;
+  }
+  if (phase == POWER_NORMAL) return;
+
+  char buf[8];
+  if (phase == POWER_HOLD_OFF) {
+    lv_obj_clear_flag(ovlCap, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(ovlBar, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(ovlBig, LV_OBJ_FLAG_HIDDEN);
+    lv_label_set_text(ovlCap, "OFF");
+    lv_bar_set_value(ovlBar, power_hold_permille(), LV_ANIM_OFF);
+  } else if (phase == POWER_COUNTDOWN) {
+    lv_obj_clear_flag(ovlCap, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(ovlBig, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(ovlBar, LV_OBJ_FLAG_HIDDEN);
+    lv_label_set_text(ovlCap, "OFF");
+    snprintf(buf, sizeof(buf), "%u", (unsigned)power_countdown_remain());
+    lv_label_set_text(ovlBig, buf);
+    lv_obj_set_style_text_color(ovlBig, UI_BAD, 0);
+  } else { /* POWER_HOLD_REBOOT */
+    lv_obj_clear_flag(ovlCap, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(ovlBig, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(ovlBar, LV_OBJ_FLAG_HIDDEN);
+    lv_label_set_text(ovlCap, "REBOOT");
+    snprintf(buf, sizeof(buf), "%u", (unsigned)power_reboot_remain());
+    lv_label_set_text(ovlBig, buf);
+    lv_obj_set_style_text_color(ovlBig, UI_WARN, 0);
+  }
 }

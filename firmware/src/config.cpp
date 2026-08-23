@@ -1,6 +1,7 @@
 #include "config.h"
 #include "net.h"
 #include "ui/ui.h"
+#include "power.h"
 #include "bsp/lcd_bl_pwm_bsp.h"
 #include <Preferences.h>
 #include "secrets.h"
@@ -80,6 +81,13 @@ static void handleLine(String line) {
       config_set_bright((uint8_t)v);
     }
     Serial.printf("ok bright %u\n", (unsigned)bright);
+  } else if (cmd == "OFF") {
+    power_request_shutdown();
+    Serial.println("ok off countdown; PWR press cancels");
+  } else if (cmd == "REBOOT") {
+    Serial.println("ok reboot");
+    delay(50);
+    ESP.restart();
   } else if (cmd == "SHOW") {
     printCfg();
   } else if (cmd == "HELP") {
@@ -89,6 +97,8 @@ static void handleLine(String line) {
     Serial.println("HOST <desktop-pet.local or pc-ip>");
     Serial.println("PET <idle|thinking|typing|happy|error|sleeping|auto>");
     Serial.println("BRIGHT <8-255>");
+    Serial.println("OFF");
+    Serial.println("REBOOT");
     Serial.println("SHOW");
   } else {
     Serial.println("unknown; HELP");
