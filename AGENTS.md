@@ -4,7 +4,7 @@ PlanPet：ESP32 桌面额度面板 + 桌宠。一块微雪 ESP32-S3 触摸屏实
 
 ## 目录与职责
 
-- `server/` — 中转服务（Node.js ≥18，CommonJS，无构建/无 lint）。拉取 GLM 与 Cursor 额度、接收 hooks 上报、维护桌宠状态机，供面板轮询。监听 `0.0.0.0:3737`，mDNS 广播 `desktop-pet.local`。`src/lib/` 是与 hooks 共享的模块（事件表、.env 解析、时间工具），`tests/` 是单测（`npm test`）。
+- `server/` — 中转服务（Node.js ≥18，CommonJS，无构建/无 lint）。拉取 GLM 与 Cursor 额度、接收 hooks 上报、维护桌宠状态机，供面板轮询。监听 `0.0.0.0:3737`，mDNS 广播 `desktop-pet.local`。`src/lib/` 是与 hooks 共享的模块（事件表、.env 解析、时间工具），`src/panel-link.js` 是 USB 串口桥（Web 配网页 `GET /setup` → `POST /api/panel/setup`），`tests/` 是单测（`npm test`）。依赖仅 `bonjour-service` 与 `serialport`。
 - `firmware/` — 额度面板固件（PlatformIO + Arduino + LVGL 9）。**纯显示端**，只渲染中转服务快照，不承担业务逻辑；微雪 3.49 寸屏物理 172×640，横屏用 640×172。`src/ui/` 界面层（桌面 + 触屏设置页），`src/bsp/` 板级驱动（含 vendor 的 axs15231b/、touch/，二者保持同层相对引用），`tools/` 烤帧脚本（GIF 源默认 `D:\develop\clawd-on-desk\assets\gif`，可用 `CLAWD_GIF_DIR` 覆盖）。
 - `hooks/` — Cursor / ZCode 事件适配器（`common.js` 共享上报逻辑，`install.js` 安装）。安装是**追加**，不得覆盖用户已有的 clawd 钩子；也禁止原样复用 clawd 的 cursor-hook.js。**目录位置不能动**——用户机器上已安装的钩子配置以绝对路径引用这里。
 - `docs/` — 设计文档与 1:1 屏幕设计稿（桌面 `screen-layout.html` v11、设置页 `settings-layout.html`）。

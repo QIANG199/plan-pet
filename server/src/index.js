@@ -1,10 +1,13 @@
 const http = require("http");
+const fs = require("fs");
+const path = require("path");
 const { execFile } = require("child_process");
 const { Bonjour } = require("bonjour-service");
 const env = require("./env");
 const { fetchQuota } = require("./glm");
 const { fetchQuota: fetchCursorQuota } = require("./cursor");
 const { createPet } = require("./pet");
+const { panelRoundtrip, listCandidates } = require("./panel-link");
 const { EVENT_SET } = require("./lib/events");
 
 const pet = createPet();
@@ -91,8 +94,66 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  /* The setup page itself is public; its API calls carry the panel token. */
+  if (req.method === "GET" && (url.pathname === "/setup" || url.pathname === "/setup.html")) {
+    fs.readFile(path.join(__dirname, "..", "public", "setup.html"), (err, data) => {
+      if (err) {
+        json(res, 500, { ok: false, error: "setup page missing" });
+        return;
+      }
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      res.end(data);
+    });
+    return;
+  }
+
   if (!tokenOk(req, url)) {
     json(res, 401, { ok: false, error: "unauthorized" });
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/panel/ports") {
+    try {
+      json(res, 200, { ports: await listCandidates() });
+    } catch (err) {
+      json(res, 500, { ok: false, error: err.message });
+    }
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/panel/setup") {
+    let body;
+    try {
+      body = JSON.parse((await readBody(req)) || "{}");
+    } catch {
+      json(res, 400, { ok: false, error: "invalid json" });
+      return;
+    }
+    /* Order matters: token/host/port never reconnect, then PASS, and WIFI
+     * last so the panel reconnects once with the complete credentials. */
+    const commands = [];
+    if (body.token) commands.push(`TOKEN ${body.token}`);
+    if (body.host) commands.push(`HOST ${body.host}`);
+    if (body.port) commands.push(`PORT ${body.port}`);
+    if (body.pass) commands.push(`PASS ${body.pass}`);
+    if (body.ssid) commands.push(`WIFI ${body.ssid}`);
+    try {
+      const replies = await panelRoundtrip({ com: body.com, commands });
+      const config = {};
+      for (const line of replies) {
+        let m;
+        if ((m = line.match(/^ssid=(.*)$/))) config.ssid = m[1];
+        else if ((m = line.match(/^host=(.*):(\d+)$/))) {
+          config.host = m[1];
+          config.port = m[2];
+        } else if ((m = line.match(/^token=\((set|empty)\)$/))) config.tokenSet = m[1] === "set";
+        else if ((m = line.match(/^bright=(\d+)$/))) config.bright = m[1];
+      }
+      json(res, 200, { ok: true, replies, config });
+    } catch (err) {
+      console.error("[panel] setup failed", err.message);
+      json(res, 500, { ok: false, error: err.message });
+    }
     return;
   }
 

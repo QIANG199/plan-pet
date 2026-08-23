@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PlanPet · 设备配置</title>
+<style>
+:root{
+  --bg:#0b0e13; --card:#12161e; --line:#2a303c; --ink:#e8ecf3; --ink2:#9aa3b2;
+  --ok:#22c55e; --warn:#f0805a; --bad:#ef4444;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+  min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:36px 16px}
+.wrap{width:100%;max-width:860px}
+h1{font-size:20px;font-weight:600;display:flex;align-items:center;gap:10px}
+h1 .dot{width:8px;height:8px;border-radius:50%;background:var(--ok)}
+.sub{color:var(--ink2);font-size:13px;margin:6px 0 22px;line-height:1.7}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-bottom:14px}
+.card h2{font-size:14px;font-weight:600;margin-bottom:14px;color:var(--ink)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.row label{width:110px;font-size:13px;color:var(--ink2);flex:none}
+input,select{background:#0b0e13;border:1px solid var(--line);border-radius:8px;color:var(--ink);
+  font-size:13px;padding:8px 10px;outline:none;flex:1;min-width:120px}
+input:focus,select:focus{border-color:var(--ok)}
+button{background:var(--line);border:0;border-radius:8px;color:var(--ink);font-size:13px;
+  padding:8px 16px;cursor:pointer}
+button:hover{filter:brightness(1.15)}
+button.primary{background:var(--ok);color:#04140a;font-weight:600}
+button:disabled{opacity:.45;cursor:not-allowed}
+.hint{font-size:12px;color:var(--ink2);margin-top:4px}
+.log{background:#0b0e13;border:1px solid var(--line);border-radius:8px;padding:10px 12px;
+  font:12px/1.7 Consolas,monospace;color:var(--ink2);max-height:200px;overflow:auto;white-space:pre-wrap}
+.ok{color:var(--ok)} .bad{color:var(--bad)}
+.status{font-size:12px;padding:6px 10px;border-radius:8px;background:#0b0e13;border:1px solid var(--line)}
+.status.good{color:var(--ok);border-color:var(--ok)}
+.status.err{color:var(--bad);border-color:var(--bad)}
+.current{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.current div{background:#0b0e13;border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.current .k{font-size:11px;color:var(--ink2);margin-bottom:4px}
+.current .v{font-size:14px;font-variant-numeric:tabular-nums;word-break:break-all}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1><span class="dot"></span>PlanPet 设备配置</h1>
+  <p class="sub">通过 USB 串口直接配置面板的 WiFi / 令牌 / 服务器。中转服务需已启动，面板用 USB 线连着电脑。<br>面板上的触屏设置页（BOOT 双击）仍可用于脱离电脑的场景。</p>
+
+  <div class="card">
+    <h2>连接</h2>
+    <div class="row">
+      <label>面板令牌</label>
+      <input id="token" type="password" placeholder="PANEL_TOKEN（.env 里的值）">
+      <button id="saveToken">记住</button>
+    </div>
+    <div class="row">
+      <label>串口</label>
+      <select id="com"></select>
+      <button id="refresh">刷新串口</button>
+      <span class="status" id="status">未连接</span>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <button id="read" class="primary">读取当前配置</button>
+    </div>
+    <div class="current" id="current" style="display:none;margin-top:12px"></div>
+  </div>
+
+  <div class="card">
+    <h2>写入配置（留空的项不修改）</h2>
+    <div class="row"><label>WiFi 名称</label><input id="ssid" placeholder="SSID"></div>
+    <div class="row"><label>WiFi 密码</label><input id="pass" type="text" placeholder="密码"></div>
+    <div class="row"><label>服务器主机</label><input id="host" placeholder="desktop-pet.local 或电脑 IP"></div>
+    <div class="row"><label>服务器端口</label><input id="port" placeholder="3737"></div>
+    <div class="row"><label>面板令牌</label><input id="ptoken" placeholder="与 .env 的 PANEL_TOKEN 一致"></div>
+    <div class="row" style="margin-top:14px">
+      <button id="write" class="primary">写入设备</button>
+      <span class="hint">顺序自动处理：令牌/主机/端口 → 密码 → WiFi（最后触发重连）</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>设备输出</h2>
+    <div class="log" id="log">等待操作…</div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const logEl = $("log");
+let logText = "";
+function log(line, cls) {
+  logText += (cls ? `<span class="${cls}">` : "") + line.replace(/&/g,"&amp;").replace(/</g,"&lt;") + (cls ? "</span>" : "") + "\n";
+  logEl.innerHTML = logText;
+  logEl.scrollTop = logEl.scrollHeight;
+}
+function token() { return $("token").value.trim(); }
+function headers() { return { "Content-Type": "application/json", "X-Panel-Token": token() }; }
+function setStatus(text, cls) { const s = $("status"); s.textContent = text; s.className = "status " + (cls || ""); }
+
+$("saveToken").onclick = () => {
+  localStorage.setItem("panelToken", token());
+  log("令牌已保存到本浏览器（localStorage）");
+};
+if (localStorage.getItem("panelToken")) $("token").value = localStorage.getItem("panelToken");
+
+async function refreshPorts() {
+  const res = await fetch("/api/panel/ports", { headers: headers() });
+  const data = await res.json();
+  const sel = $("com");
+  sel.innerHTML = "";
+  if (!data.ports || data.ports.length === 0) {
+    sel.innerHTML = "<option>未发现设备（插好 USB 再刷新）</option>";
+    setStatus("未发现设备", "err");
+    return;
+  }
+  for (const p of data.ports) {
+    const opt = document.createElement("option");
+    opt.value = p.path;
+    opt.textContent = `${p.path}（${p.id}）`;
+    sel.appendChild(opt);
+  }
+  setStatus(`发现 ${data.ports.length} 个候选串口`, "good");
+  log(`串口候选：${data.ports.map((p) => p.path).join(", ")}`);
+}
+$("refresh").onclick = () => refreshPorts().catch((e) => log("刷新失败: " + e.message, "bad"));
+refreshPorts().catch(() => {});
+
+function parseShow(replies) {
+  const cfg = {};
+  for (const line of replies) {
+    let m;
+    if ((m = line.match(/^ssid=(.*)$/))) cfg.ssid = m[1];
+    else if ((m = line.match(/^host=(.*):(\d+)$/))) { cfg.host = m[1]; cfg.port = m[2]; }
+    else if ((m = line.match(/^token=(.*)$/))) cfg.tokenSet = m[1] === "(set)";
+    else if ((m = line.match(/^bright=(.*)$/))) cfg.bright = m[1];
+  }
+  return cfg;
+}
+
+async function callSetup(payload) {
+  if (!token()) { log("请先填面板令牌（.env 里的 PANEL_TOKEN）", "bad"); return null; }
+  if ($("com").value && !$("com").value.startsWith("未")) payload.com = $("com").value;
+  const res = await fetch("/api/panel/setup", {
+    method: "POST",
+    headers: headers(),
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (res.status === 401) { log("令牌不对：401 unauthorized", "bad"); return null; }
+  if (!res.ok) { log("失败: " + (data.error || res.status), "bad"); return null; }
+  for (const line of data.replies || []) log(line);
+  return data;
+}
+
+$("read").onclick = async () => {
+  logEl.textContent = logText = "";
+  log("读取设备配置…");
+  setStatus("通信中…");
+  const data = await callSetup({});
+  if (!data) { setStatus("失败", "err"); return; }
+  const cfg = data.config || {};
+  const cur = $("current");
+  cur.style.display = "grid";
+  cur.innerHTML = `
+    <div><div class="k">WiFi</div><div class="v">${cfg.ssid || "—"}</div></div>
+    <div><div class="k">服务器</div><div class="v">${cfg.host || "—"}:${cfg.port || "—"}</div></div>
+    <div><div class="k">面板令牌</div><div class="v">${cfg.tokenSet ? "已设置" : "未设置"}</div></div>
+    <div><div class="k">亮度</div><div class="v">${cfg.bright || "—"}</div></div>`;
+  setStatus("已连接", "good");
+};
+
+$("write").onclick = async () => {
+  logEl.textContent = logText = "";
+  const payload = {};
+  const v = (id) => $(id).value.trim();
+  if (v("ssid")) payload.ssid = v("ssid");
+  if (v("pass")) payload.pass = v("pass");
+  if (v("host")) payload.host = v("host");
+  if (v("port")) payload.port = v("port");
+  if (v("ptoken")) payload.token = v("ptoken");
+  if (Object.keys(payload).length === 0) { log("所有字段都是空的，没有可写入的内容", "bad"); return; }
+  log("写入配置…（设备会在最后一条 WiFi 指令后重连）");
+  setStatus("写入中…");
+  const data = await callSetup(payload);
+  if (!data) { setStatus("失败", "err"); return; }
+  const cfg = data.config || {};
+  if (cfg.ssid) log(`当前 WiFi: ${cfg.ssid}`, "ok");
+  if (cfg.host) log(`当前服务器: ${cfg.host}:${cfg.port}`, "ok");
+  log("完成。面板屏幕应在几秒内恢复数据。", "ok");
+  setStatus("写入完成", "good");
+};
+</script>
+</body>
+</html>
