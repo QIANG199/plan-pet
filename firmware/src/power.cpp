@@ -13,7 +13,6 @@ static const int PIN_BOOT = 0;   /* BOOT key, active low, strapping pin */
 static const float V_EMPTY = 3.40f;
 static const float V_FULL = 4.20f;
 static const float V_PRESENT = 3.00f;
-static const float V_USB_LIFT = 0.11f;
 
 static const uint32_t PWR_HOLD_MS = 3000;      /* hold PWR this long to trigger off */
 static const uint32_t PWR_RELEASE_MS = 150;    /* boot-time settle before arming PWR */
@@ -327,7 +326,10 @@ void power_read(bool *charging, int *pct) {
   bool usb = HWCDC::isPlugged();
   *charging = usb;
 
-  float vs = usb ? (vEma - V_USB_LIFT) : vEma;
+  /* No USB voltage compensation: measuring this board's divider showed the
+   * reading does not lift while charging, and an earlier -0.11V offset made
+   * the percentage jump ~13% the moment the cable was pulled. */
+  float vs = vEma;
   int p = (int)((vs - V_EMPTY) / (V_FULL - V_EMPTY) * 100.0f + 0.5f);
   if (p < 0) p = 0;
   if (p > 100) p = 100;

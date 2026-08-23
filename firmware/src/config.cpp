@@ -71,6 +71,14 @@ static void handleLine(String line) {
     host = arg;
     save();
     Serial.println("ok host");
+  } else if (cmd == "PORT") {
+    long p = arg.toInt();
+    if (p > 0 && p <= 65535) {
+      config_set_port((uint16_t)p);
+      Serial.println("ok port");
+    } else {
+      Serial.println("bad port; 1-65535");
+    }
   } else if (cmd == "PET") {
     arg.toLowerCase();
     ui_set_pet_override(arg.c_str());
@@ -112,6 +120,7 @@ static void handleLine(String line) {
     Serial.println("PASS <password>");
     Serial.println("TOKEN <panel-token>");
     Serial.println("HOST <desktop-pet.local or pc-ip>");
+    Serial.println("PORT <1-65535>");
     Serial.println("PET <idle|thinking|typing|happy|error|sleeping|auto>");
     Serial.println("BRIGHT <8-255>");
     Serial.println("OFF");
