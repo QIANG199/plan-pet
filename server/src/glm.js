@@ -1,11 +1,5 @@
 const GLM_URL = "https://api.z.ai/api/monitor/usage/quota/limit";
-
-function toUnixSec(value) {
-  if (value == null || value === "") return null;
-  const n = Number(value);
-  if (!Number.isFinite(n) || n <= 0) return null;
-  return n > 1e12 ? Math.floor(n / 1000) : Math.floor(n);
-}
+const { toUnixSec } = require("./lib/text");
 
 function bar(limit) {
   if (!limit) return null;
@@ -66,4 +60,4 @@ async function fetchQuota(apiKey) {
   return mapQuota(json);
 }
 
-module.exports = { fetchQuota, mapQuota, pickWindows, toUnixSec };
+module.exports = { fetchQuota, mapQuota, pickWindows };

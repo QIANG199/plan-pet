@@ -1,11 +1,4 @@
-const EVENTS = new Set([
-  "SessionStart",
-  "UserPromptSubmit",
-  "PreToolUse",
-  "PostToolUse",
-  "PostToolUseFailure",
-  "Stop",
-]);
+const { EVENT_SET } = require("./lib/events");
 
 const HAPPY_MS = 4_000;
 const SETTLE_MS = 10_000;
@@ -73,7 +66,7 @@ function createPet() {
   }
 
   function apply({ source, event, status }) {
-    if (!EVENTS.has(event)) return false;
+    if (!EVENT_SET.has(event)) return false;
     if (source !== "cursor" && source !== "zcode") return false;
 
     lastEventAt = Date.now();
@@ -140,7 +133,7 @@ function createPet() {
   }
 
   setInterval(tick, 30_000).unref();
-  return { apply, snapshot, EVENTS };
+  return { apply, snapshot };
 }
 
-module.exports = { createPet, EVENTS };
+module.exports = { createPet };

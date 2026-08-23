@@ -1,14 +1,6 @@
 #!/usr/bin/env node
 const { runHook } = require("./common");
-
-const EVENTS = new Set([
-  "SessionStart",
-  "UserPromptSubmit",
-  "PreToolUse",
-  "PostToolUse",
-  "PostToolUseFailure",
-  "Stop",
-]);
+const { EVENT_SET } = require("../server/src/lib/events");
 
 runHook({
   stdoutLine() {
@@ -16,7 +8,7 @@ runHook({
   },
   mapPayload(payload) {
     const event = payload.hook_event_name || payload.event || "";
-    if (!EVENTS.has(event)) return null;
+    if (!EVENT_SET.has(event)) return null;
     const body = {
       source: "zcode",
       event,

@@ -2,6 +2,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { DatabaseSync } = require("node:sqlite");
+const { stripQuotes, toUnixSec } = require("./lib/text");
 
 const USAGE_URL = "https://cursor.com/api/usage-summary";
 
@@ -15,17 +16,6 @@ function vscdbPath() {
   return path.join(os.homedir(), ".config", "Cursor", "User", "globalStorage", "state.vscdb");
 }
 
-function unquote(value) {
-  const s = String(value || "").trim();
-  if (
-    (s.startsWith('"') && s.endsWith('"')) ||
-    (s.startsWith("'") && s.endsWith("'"))
-  ) {
-    return s.slice(1, -1);
-  }
-  return s;
-}
-
 function readSession() {
   const src = vscdbPath();
   if (!fs.existsSync(src)) throw new Error("Cursor state.vscdb not found (sign in to Cursor)");
@@ -36,8 +26,8 @@ function readSession() {
     const stmt = db.prepare("SELECT value FROM ItemTable WHERE key = ?");
     const idRow = stmt.get("adminSettings.cachedAuthId");
     const tokenRow = stmt.get("cursorAuth/accessToken");
-    const cachedAuthId = unquote(idRow && idRow.value);
-    const accessToken = unquote(tokenRow && tokenRow.value);
+    const cachedAuthId = stripQuotes(idRow && idRow.value);
+    const accessToken = stripQuotes(tokenRow && tokenRow.value);
     if (!accessToken) throw new Error("cursorAuth/accessToken missing");
     if (!cachedAuthId) throw new Error("adminSettings.cachedAuthId missing");
     return { cachedAuthId, accessToken };
@@ -48,9 +38,7 @@ function readSession() {
 
 function isoToSec(value) {
   if (value == null || value === "") return null;
-  if (typeof value === "number") {
-    return value > 1e12 ? Math.floor(value / 1000) : Math.floor(value);
-  }
+  if (typeof value === "number") return toUnixSec(value);
   const t = Date.parse(String(value));
   if (!Number.isFinite(t)) return null;
   return Math.floor(t / 1000);

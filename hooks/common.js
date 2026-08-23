@@ -1,28 +1,9 @@
-const fs = require("fs");
 const http = require("http");
 const path = require("path");
+const { loadEnvFile } = require("../server/src/lib/dotenv");
 
 const ROOT = path.join(__dirname, "..");
-
-function loadEnv() {
-  const file = path.join(ROOT, ".env");
-  if (!fs.existsSync(file)) return;
-  for (const raw of fs.readFileSync(file, "utf8").split(/\r?\n/)) {
-    const line = raw.trim();
-    if (!line || line.startsWith("#")) continue;
-    const eq = line.indexOf("=");
-    if (eq < 1) continue;
-    const key = line.slice(0, eq).trim();
-    let value = line.slice(eq + 1).trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
-    if (process.env[key] == null) process.env[key] = value;
-  }
-}
+const ENV_FILE = path.join(ROOT, ".env");
 
 function readStdinJson() {
   return new Promise((resolve) => {
@@ -54,7 +35,7 @@ function readStdinJson() {
 }
 
 function postEvent(body) {
-  loadEnv();
+  loadEnvFile(ENV_FILE);
   const token = process.env.PANEL_TOKEN;
   if (!token) return Promise.resolve();
   const port = Number(process.env.PORT || 3737);
@@ -141,4 +122,4 @@ function runHook({ stdoutLine, mapPayload }) {
     });
 }
 
-module.exports = { ROOT, runHook, postEvent, loadEnv };
+module.exports = { runHook };

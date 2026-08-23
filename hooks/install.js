@@ -2,29 +2,15 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const { EVENTS, CURSOR_TO_EVENT } = require("../server/src/lib/events");
 
 const ROOT = path.join(__dirname);
 const cursorHook = path.join(ROOT, "cursor-hook.js").replace(/\\/g, "/");
 const zcodeHook = path.join(ROOT, "zcode-hook.js").replace(/\\/g, "/");
 const nodeBin = process.execPath.replace(/\\/g, "/");
 
-const CURSOR_EVENTS = [
-  "sessionStart",
-  "beforeSubmitPrompt",
-  "preToolUse",
-  "postToolUse",
-  "postToolUseFailure",
-  "stop",
-];
-
-const ZCODE_EVENTS = [
-  "SessionStart",
-  "UserPromptSubmit",
-  "PreToolUse",
-  "PostToolUse",
-  "PostToolUseFailure",
-  "Stop",
-];
+const CURSOR_EVENTS = Object.keys(CURSOR_TO_EVENT);
+const ZCODE_EVENTS = EVENTS;
 
 function readJson(file, fallback) {
   if (!fs.existsSync(file)) return fallback;

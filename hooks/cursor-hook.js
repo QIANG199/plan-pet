@@ -1,14 +1,6 @@
 #!/usr/bin/env node
 const { runHook } = require("./common");
-
-const CURSOR_TO_EVENT = {
-  sessionStart: "SessionStart",
-  beforeSubmitPrompt: "UserPromptSubmit",
-  preToolUse: "PreToolUse",
-  postToolUse: "PostToolUse",
-  postToolUseFailure: "PostToolUseFailure",
-  stop: "Stop",
-};
+const { CURSOR_TO_EVENT } = require("../server/src/lib/events");
 
 runHook({
   stdoutLine(payload) {

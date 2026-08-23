@@ -5,6 +5,7 @@ const env = require("./env");
 const { fetchQuota } = require("./glm");
 const { fetchQuota: fetchCursorQuota } = require("./cursor");
 const { createPet } = require("./pet");
+const { EVENT_SET } = require("./lib/events");
 
 const pet = createPet();
 const cache = {
@@ -108,7 +109,7 @@ const server = http.createServer(async (req, res) => {
       json(res, 400, { ok: false, error: "invalid json" });
       return;
     }
-    if (!pet.EVENTS.has(body.event)) {
+    if (!EVENT_SET.has(body.event)) {
       res.writeHead(204);
       res.end();
       return;
