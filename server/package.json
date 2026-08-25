@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node src/index.js",
     "test": "node --test",
-    "hooks:install": "node ../hooks/install.js"
+    "hooks:install": "node ../hooks/install.js",
+    "hooks:status": "node ../hooks/install.js status"
   },
   "engines": {
     "node": ">=18"

@@ -87,13 +87,13 @@ server\scripts\install-startup.cmd
 
 ### 4. 桌宠跟着编码走
 
-追加安装，**不会覆盖**你已有的 clawd 钩子：
+追加安装，**不会覆盖**你已有的 clawd 钩子。Cursor 大版本更新有时会清空 `~/.cursor/hooks.json`，重跑即可：
 
 ```bat
-node hooks/install.js
+hooks\install.cmd
 ```
 
-或 `cd server && npm run hooks:install`。装完后用 Cursor / ZCode 编码，桌宠应切换 thinking / typing 等。
+或 `node hooks/install.js` / `cd server && npm run hooks:install`。查是否齐全：`node hooks/install.js status`。装完后**新开 Agent 对话**（或重启 Cursor），编码时桌宠应切换 thinking / typing 等。
 
 ### 5. 面板日常
 
@@ -222,8 +222,10 @@ python -m platformio device monitor
 ### 6. 装 hooks
 
 ```bat
-node hooks/install.js
+hooks\install.cmd
 ```
+
+Cursor 更新后桌宠不跟手时，先跑上面这条（或 `node hooks/install.js status` 看缺了哪些）。
 
 ---
 
@@ -233,7 +235,7 @@ node hooks/install.js
 |---|---|
 | `server/` | 中转服务（Node 标准库 + `serialport`；`src/lib/` 为与 hooks 共享的事件表/工具，`tests/` 为单测 `npm test`） |
 | `firmware/` | 额度面板固件（PlatformIO + Arduino + LVGL 9），纯显示；`src/ui/` 界面、`src/bsp/` 板级驱动、`tools/` 烤帧脚本 |
-| `hooks/` | Cursor / ZCode 适配器；`install.js` 只追加 |
+| `hooks/` | Cursor / ZCode 适配器；`install.js` / `install.cmd` 只追加，可重复跑 |
 | `docs/` | 设计方案、1:1 设计稿（桌面 + 设置页）、领域词汇 |
 
 改行为前先读 [CONTEXT.md](CONTEXT.md)（术语）和 [docs/design/01-设计方案.md](docs/design/01-设计方案.md)（API、状态机、ADR）。
@@ -253,7 +255,7 @@ COM 被串口监视器占用，先关掉再 upload。
 目录联接没建，不是仓库缺文件。
 
 **桌宠不跟手**  
-hooks 是否安装、中转是否在跑、Cursor/ZCode 是否真的走到了工具调用。可用串口 `PET thinking` 确认动画本身正常，再 `PET auto`。
+先 `node hooks/install.js status`：Cursor 升级常把 `~/.cursor/hooks.json` 清成空对象。缺了就跑 `hooks\install.cmd`，再新开 Agent 对话。其余查中转是否在跑、是否真的走到了工具调用。可用串口 `PET thinking` 确认动画本身正常，再 `PET auto`。
 
 ## 文档索引
 
