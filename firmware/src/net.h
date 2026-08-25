@@ -33,4 +33,6 @@ bool net_wifi_up();
 const Snapshot &net_snapshot();
 uint32_t net_last_ok_ms();          /* millis() of the last parsed snapshot (boot time if none) */
 bool net_server_ok();               /* WiFi up and a snapshot parsed recently */
-void net_set_poll_ms(uint32_t ms);  /* poll cadence; 2s awake, slower while the screen sleeps */
+void net_set_poll_ms(uint32_t ms);  /* poll cadence; 1s awake, slower while the screen sleeps */
+void net_sleep_enter();             /* screen off: radio duty-cycled in short windows */
+void net_sleep_exit();              /* screen on: keep WiFi up and poll normally */

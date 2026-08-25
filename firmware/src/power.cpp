@@ -13,6 +13,12 @@ static const int PIN_BOOT = 0;   /* BOOT key, active low, strapping pin */
 static const float V_EMPTY = 3.40f;
 static const float V_FULL = 4.20f;
 static const float V_PRESENT = 3.00f;
+/* Deep-discharge guard: below V_LOW_OFF for this long -> cut power (USB
+ * plugged never triggers). Re-arms only once the pack has recovered above
+ * V_LOW_REARM, so the shutdown path can't loop. */
+static const float V_LOW_OFF = 3.30f;
+static const float V_LOW_REARM = 3.50f;
+static const uint32_t LOW_OFF_HOLD_MS = 120000;
 
 static const uint32_t PWR_HOLD_MS = 3000;      /* hold PWR this long to trigger off */
 static const uint32_t PWR_RELEASE_MS = 150;    /* boot-time settle before arming PWR */
@@ -34,6 +40,8 @@ static volatile bool forceOffReq = false;
 static float vEma;
 static bool emaReady;
 static int shownPct = -2;
+static uint32_t lowSince;
+static bool lowFired;
 static i2c_master_dev_handle_t tca;
 static bool railHeld;
 static bool shuttingDown;
@@ -325,6 +333,21 @@ void power_read(bool *charging, int *pct) {
 
   bool usb = HWCDC::isPlugged();
   *charging = usb;
+
+  if (vEma >= V_LOW_REARM) lowFired = false; /* pack recovered (usually charging) */
+  if (usb) {
+    lowSince = 0;
+  } else if (!lowFired && vEma >= V_PRESENT && vEma < V_LOW_OFF) {
+    if (!lowSince) lowSince = millis();
+    if (millis() - lowSince >= LOW_OFF_HOLD_MS) {
+      lowFired = true;
+      lowSince = 0;
+      Serial.printf("[pwr] battery %.2fV sustained; shutting down\n", vEma);
+      power_request_shutdown();
+    }
+  } else {
+    lowSince = 0;
+  }
 
   /* No USB voltage compensation: measuring this board's divider showed the
    * reading does not lift while charging, and an earlier -0.11V offset made

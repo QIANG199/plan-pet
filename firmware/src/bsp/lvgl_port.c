@@ -15,6 +15,7 @@
 
 static const char *TAG = "lvgl_port";
 static SemaphoreHandle_t lvgl_mux = NULL;
+static esp_lcd_panel_handle_t lcd_panel = NULL;
 
 static uint16_t *trans_buf_1 = NULL;
 uint8_t *lvgl_dest = NULL;                /* rotation buffer */
@@ -139,6 +140,13 @@ void lvgl_port_unlock(void)
   xSemaphoreGive(lvgl_mux);
 }
 
+/* Blank the panel itself (DISPOFF 0x28) so its driver IC and bias rail stop
+ * drawing while the screen sleeps; ON restores it before the UI repaints. */
+void lvgl_port_panel_disp_off(bool off)
+{
+  if (lcd_panel) esp_lcd_panel_disp_off(lcd_panel, off);
+}
+
 static void lvgl_port_task(void *arg)
 {
   uint32_t task_delay_ms = LVGL_TASK_MAX_DELAY_MS;
@@ -214,6 +222,8 @@ void lvgl_port_init(void)
 
   ESP_LOGI(TAG, "Install panel driver");
   ESP_ERROR_CHECK(esp_lcd_new_panel_axs15231b(panel_io, &panel_config, &panel));
+
+  lcd_panel = panel;
 
   ESP_ERROR_CHECK(gpio_set_level(PIN_LCD_RST, 1));
   vTaskDelay(pdMS_TO_TICKS(30));

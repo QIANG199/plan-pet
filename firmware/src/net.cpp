@@ -5,22 +5,34 @@
 #include "rtc.h"
 #include <Network.h>
 #include <WiFi.h>
-#include <ESPmDNS.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 
 static Snapshot snap;
 static uint32_t lastPoll;
-static uint32_t pollMs = 2000;
+static uint32_t pollMs = 1000;
 static uint32_t lastOkMs;
 static uint32_t lastNtpTry;
 static uint32_t lastWifiTry;
 static uint32_t wifiBackoff = 2000;
 static bool ntpOk;
-static bool mdnsReady;
 static int lastHttp = -999;
 
 static const uint32_t SRV_LOST_MS = 15000; /* miss this many polls in a row -> server lost */
+
+/* Screen-off power saving: WiFi is normally off and only comes up in short
+ * windows (one good poll per window) so the radio is not parked on the AP
+ * beacon stream all night. */
+static const uint32_t SLEEP_NET_PERIOD_MS = 5UL * 60UL * 1000UL;
+static const uint32_t SLEEP_NET_WINDOW_MS = 15000;
+static const uint32_t POLL_FAIL_MAX_BACKOFF = 60; /* x pollMs, caps retry storms while the server is down */
+
+static bool sleepNet;
+static bool radioWindow;
+static bool windowPolled;
+static uint32_t windowStart;
+static uint32_t nextWindowAt;
+static uint32_t failBackoff = 1;
 
 static void parseDash(const String &body) {
   JsonDocument doc;
@@ -69,59 +81,25 @@ static bool usableV4(const IPAddress &ip) {
   return true;
 }
 
-static String mdnsLabel(const String &host) {
-  String q = host;
-  q.trim();
-  q.toLowerCase();
-  if (q.endsWith(".local")) q.remove(q.length() - 6);
-  return q;
-}
-
-static void ensureMdns() {
-  if (mdnsReady || WiFi.status() != WL_CONNECTED) return;
-  mdnsReady = MDNS.begin("quota-panel");
-  Serial.println(mdnsReady ? "mdns on" : "mdns begin fail");
-}
-
 static bool resolveHost(IPAddress &ip) {
   String host = config_host();
   host.trim();
   if (ip.fromString(host)) return true;
-
-  ensureMdns();
-  const String label = mdnsLabel(host);
-  if (mdnsReady && label.length()) {
-    const int n = MDNS.queryService("http", "tcp");
-    for (int i = 0; i < n; i++) {
-      const String inst = MDNS.instanceName(i);
-      const String hn = MDNS.hostname(i);
-      if (!inst.equalsIgnoreCase("plan-pet") && !hn.startsWith(label)) continue;
-      IPAddress found = MDNS.address(i);
-      if (usableV4(found)) {
-        ip = found;
-        return true;
-      }
-    }
-    IPAddress found = MDNS.queryHost(label.c_str(), 2000);
-    if (usableV4(found)) {
-      ip = found;
-      return true;
-    }
+  if (host.length() && WiFi.hostByName(host.c_str(), ip) == 1 && usableV4(ip)) {
+    return true;
   }
-
-  if (WiFi.hostByName(host.c_str(), ip) == 1 && usableV4(ip)) return true;
   return false;
 }
 
-static void pollOnce() {
-  if (WiFi.status() != WL_CONNECTED) return;
-  if (config_token().isEmpty()) return;
+static int pollOnce() {
+  if (WiFi.status() != WL_CONNECTED) return -1;
+  if (config_token().isEmpty()) return -1;
 
   IPAddress ip;
   if (!resolveHost(ip)) {
     Serial.println("dns fail " + config_host() + " (try HOST <pc-ip>)");
     lastHttp = -2;
-    return;
+    return -2;
   }
 
   String url = "http://" + ip.toString() + ":" + String(config_port()) + "/api/dashboard";
@@ -138,13 +116,10 @@ static void pollOnce() {
     Serial.printf("http %d %s glm=%d\n", code, ip.toString().c_str(), (int)snap.glmOk);
     lastHttp = code;
   }
+  return code;
 }
 
 void net_reconnect() {
-  if (mdnsReady) {
-    MDNS.end();
-    mdnsReady = false;
-  }
   String s = config_wifi_ssid();
   if (!s.length()) return;
   WiFi.disconnect();
@@ -165,8 +140,45 @@ void net_begin() {
   }
 }
 
+void net_sleep_enter() {
+  sleepNet = true;
+  radioWindow = false;
+  windowPolled = false;
+  WiFi.mode(WIFI_OFF);
+  nextWindowAt = millis() + SLEEP_NET_PERIOD_MS;
+  Serial.println("[net] screen-sleep duty cycle");
+}
+
+void net_sleep_exit() {
+  if (!sleepNet) return;
+  sleepNet = false;
+  radioWindow = false;
+  WiFi.mode(WIFI_STA);
+  net_reconnect();
+}
+
 void net_loop() {
   uint32_t now = millis();
+  if (sleepNet) {
+    if (!radioWindow) {
+      if ((int32_t)(now - nextWindowAt) >= 0) {
+        radioWindow = true;
+        windowStart = now;
+        windowPolled = false;
+        WiFi.mode(WIFI_STA);
+        net_reconnect();
+        lastPoll = now - pollMs; /* poll as soon as the link comes up */
+      } else {
+        rtc_save_if_synced();
+        return;
+      }
+    } else if (windowPolled || now - windowStart > SLEEP_NET_WINDOW_MS) {
+      radioWindow = false;
+      WiFi.mode(WIFI_OFF);
+      nextWindowAt = now + SLEEP_NET_PERIOD_MS;
+      return;
+    }
+  }
   if (WiFi.status() != WL_CONNECTED && config_wifi_ssid().length()) {
     if (now - lastWifiTry >= wifiBackoff) {
       lastWifiTry = now;
@@ -183,9 +195,15 @@ void net_loop() {
     ntpOk = true;
   }
   rtc_save_if_synced();
-  if (now - lastPoll < pollMs) return;
+  if (now - lastPoll < pollMs * failBackoff) return;
   lastPoll = now;
-  pollOnce();
+  int code = pollOnce();
+  if (code == 200) {
+    failBackoff = 1;
+    if (radioWindow) windowPolled = true; /* one good poll is all a window needs */
+  } else if (failBackoff < POLL_FAIL_MAX_BACKOFF) {
+    failBackoff = failBackoff > 1 ? failBackoff * 2 : 2;
+  }
   if (lvgl_port_lock(50)) {
     ui_apply(snap);
     ui_set_link(net_wifi_up(), net_server_ok());

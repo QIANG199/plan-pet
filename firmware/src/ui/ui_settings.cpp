@@ -612,7 +612,7 @@ void ui_settings_poll() {
   if (view == SV_EDIT && connState == CS_CONNECTING) {
     if (WiFi.status() == WL_CONNECTED && WiFi.SSID() == pendSsid) {
       config_set_wifi(pendSsid, pendPass);
-      net_reconnect(); /* reset mDNS/ntp state for the new network */
+      net_reconnect(); /* re-associate on the new network */
       connect_result(true);
     } else if (millis() - connStart > CONNECT_TIMEOUT_MS) {
       connect_result(false);

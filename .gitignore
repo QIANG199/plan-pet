@@ -10,3 +10,4 @@ firmware/lib/lvgl/
 .workbuddy/
 **/__pycache__/
 .zcode/
+**/.mimosa/

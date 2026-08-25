@@ -2,7 +2,6 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const { execFile } = require("child_process");
-const { Bonjour } = require("bonjour-service");
 const env = require("./env");
 const { fetchQuota } = require("./glm");
 const { fetchQuota: fetchCursorQuota } = require("./cursor");
@@ -183,23 +182,6 @@ const server = http.createServer(async (req, res) => {
   json(res, 404, { ok: false, error: "not found" });
 });
 
-function advertiseMdns() {
-  try {
-    const bonjour = new Bonjour();
-    bonjour.publish({
-      name: "plan-pet",
-      host: "plan-pet.local",
-      type: "http",
-      port: env.port,
-      disableIPv6: true,
-      txt: { path: "/api/dashboard" },
-    });
-    console.log("[mdns] advertised plan-pet.local");
-  } catch (err) {
-    console.error("[mdns] skip", err.message);
-  }
-}
-
 function tryFirewall() {
   if (process.platform !== "win32") return;
   execFile(
@@ -242,7 +224,6 @@ server.listen(env.port, env.host, async () => {
   console.log(`[listen] http://${env.host}:${env.port}`);
   console.log("[token] X-Panel-Token is set (see .env). Do not commit .env.");
   tryFirewall();
-  advertiseMdns();
   await refreshGlm();
   await refreshCursor();
   setInterval(refreshGlm, 5 * 60 * 1000).unref();

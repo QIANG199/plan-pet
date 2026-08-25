@@ -4,7 +4,7 @@
 
 桌宠贴图来自开源项目 **[Clawd on Desk](https://github.com/rullerzhou-afk/clawd-on-desk)**（GIF 不进本仓库，见 [致谢](docs/credits.md)）。
 
-GitHub：[QIANG199/plan-pet](https://github.com/QIANG199/plan-pet)（源码 [Apache-2.0](LICENSE)）。局域网发现用 mDNS **`plan-pet.local`**。旧固件若存的是 `desktop-pet.local`，需重烧固件并把 HOST 改为 `plan-pet.local`（网页 `/setup`、串口或触屏设置页均可）；直接填电脑 IP 的板子不受影响。
+GitHub：[QIANG199/plan-pet](https://github.com/QIANG199/plan-pet)（源码 [Apache-2.0](LICENSE)）。面板直连电脑 IP 访问中转服务（配网页 `/setup`、串口 `HOST` 或触屏设置页写入）；mDNS 发现已移除——目标局域网组播不通，DHCP 换 IP 后重设 HOST 即可。
 
 电脑上跑一个很小的 **中转服务**，面板只负责显示。Cursor 登录态和 Z.ai Key 都留在电脑里，不进固件。
 
@@ -26,9 +26,9 @@ GitHub：[QIANG199/plan-pet](https://github.com/QIANG199/plan-pet)（源码 [Apa
 硬件：微雪 **ESP32-S3-Touch-LCD-3.49** A 款带 18650（SKU 32373），物理 172×640，横屏按 640×172 来画。
 
 ```
- 电脑（中转服务 :3737，mDNS plan-pet.local）
+ 电脑（中转服务 :3737，面板直连其局域网 IP）
    GLM API + Cursor 账单 + hooks 事件
-                    ↓  每 2 秒 GET /api/dashboard
+                    ↓  每 1 秒 GET /api/dashboard
  额度面板（ESP32，只渲染快照）
 ```
 
@@ -57,7 +57,7 @@ npm install
 npm start
 ```
 
-看到类似 `[mdns] advertised plan-pet.local` 即在局域网广播。本机验收（把令牌换进去）：
+本机验收（把令牌换进去）：
 
 ```
 http://127.0.0.1:3737/api/dashboard?token=<PANEL_TOKEN>
@@ -98,8 +98,7 @@ node hooks/install.js
 ### 5. 面板日常
 
 - 日常插 USB 供电；18650 是备用。电脑要开着，中转服务要在跑。
-- 同一局域网。面板用 mDNS 找 `plan-pet.local`，不要把会变的电脑 IP 当成长期身份。
-- 若解析失败，串口可临时 `HOST <电脑当前IP>`，这是逃生口，不是默认做法。
+- 同一局域网。面板直连电脑 IP（配网页 / 触屏设置页 / 串口 `HOST` 写入，存设备 NVS）；mDNS 发现已移除，电脑 IP 被 DHCP 换掉后需重设。
 - 背面 **RESET** 键是硬件复位线，固件读不到；**BOOT** 键已由固件接管（换肤 / 设置 / 重启）。
 
 ### 6. 配置：Web 页面（推荐）/ 触屏设置页 / 串口
@@ -120,7 +119,7 @@ http://127.0.0.1:3737/setup
 WIFI <ssid>
 PASS <password>
 TOKEN <面板令牌>
-HOST plan-pet.local
+HOST <电脑IP>
 PORT <1-65535>
 BRIGHT 8-255
 SLEEP 0-90   息屏超时（分钟，0=关闭）；SLEEP NOW 立即息屏
@@ -232,7 +231,7 @@ node hooks/install.js
 
 | 目录 | 职责 |
 |---|---|
-| `server/` | 中转服务（Node 标准库 + `bonjour-service`；`src/lib/` 为与 hooks 共享的事件表/工具，`tests/` 为单测 `npm test`） |
+| `server/` | 中转服务（Node 标准库 + `serialport`；`src/lib/` 为与 hooks 共享的事件表/工具，`tests/` 为单测 `npm test`） |
 | `firmware/` | 额度面板固件（PlatformIO + Arduino + LVGL 9），纯显示；`src/ui/` 界面、`src/bsp/` 板级驱动、`tools/` 烤帧脚本 |
 | `hooks/` | Cursor / ZCode 适配器；`install.js` 只追加 |
 | `docs/` | 设计方案、1:1 设计稿（桌面 + 设置页）、领域词汇 |
@@ -242,7 +241,7 @@ node hooks/install.js
 ## 常见问题
 
 **面板一直连不上电脑**  
-中转是否在跑、是否 `0.0.0.0:3737`、防火墙规则是否加上、电脑和板子是否同一局域网。mDNS 失败时串口 `HOST 192.168.x.x` 应急。
+中转是否在跑、是否 `0.0.0.0:3737`、防火墙规则是否加上、电脑和板子是否同一局域网、`HOST` 是否还指向电脑当前 IP（DHCP 换 IP 后串口 `HOST <新IP>` 重设）。
 
 **本机浏览器有数据、屏上 `fail`**  
 令牌不一致（`.env` / `secrets.h` / 串口 `TOKEN`），或面板没用上 `X-Panel-Token`（固件会带请求头；不要只靠查询参数）。

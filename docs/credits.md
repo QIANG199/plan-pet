@@ -30,7 +30,6 @@ PlanPet **自己的代码**以仓库根目录 [Apache License 2.0](../LICENSE) �
 
 | 项目 | 用途 | 链接 |
 |---|---|---|
-| [bonjour-service](https://github.com/onlxltd/bonjour-service) | mDNS 广播 `plan-pet.local` | MIT |
 | Node.js | 运行时 | https://nodejs.org |
 
 ## 接口对照（参考，非拷贝其程序）

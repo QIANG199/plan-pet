@@ -6,6 +6,7 @@
 #include "ui/ui_boot.h"
 #include "ui/ui_settings.h"
 #include "bsp/lcd_bl_pwm_bsp.h"
+#include "bsp/lvgl_port.h"
 #include "lvgl.h"
 
 /* Pet enters "sleeping" after SLEEP_ENTER_S on the server (pet.js); the
@@ -15,7 +16,7 @@ static const uint32_t SRV_FRESH_MS = 60000;          /* snapshot age trusted for
 static const uint32_t POLL_FALLBACK_MS = 30UL * 60UL * 1000UL; /* no data at all -> blank anyway */
 static const uint32_t WAKE_FRESH_MS = 15000;         /* snapshot age trusted to wake on events */
 static const uint32_t ASLEEP_POLL_MS = 10000;
-static const uint32_t AWAKE_POLL_MS = 2000;
+static const uint32_t AWAKE_POLL_MS = 1000;
 
 static volatile bool wakeReq = false;
 static volatile bool sleepNowReq = false;
@@ -51,20 +52,26 @@ static void enter_sleep(bool forced) {
   forcedEntry = forced;
   entryPetState = net_snapshot().petState;
   ui_set_sleep(true);
+  lvgl_port_panel_disp_off(true);
   lcd_bl_pwm_bsp_off();
   net_set_poll_ms(ASLEEP_POLL_MS);
+  net_sleep_enter();
+  setCpuFrequencyMhz(80); /* WiFi needs >=80; rendering is paused anyway */
   Serial.println("[standby] sleep");
 }
 
 static void wake_up() {
   asleep = false;
   forcedEntry = false;
+  setCpuFrequencyMhz(240);
+  net_sleep_exit();
+  net_set_poll_ms(AWAKE_POLL_MS);
+  lvgl_port_panel_disp_off(false);
   lcd_bl_pwm_bsp_on(config_bright());
   ui_set_sleep(false); /* clears the gate before the setters below */
   ui_apply(net_snapshot());
   ui_set_link(net_wifi_up(), net_server_ok());
   ui_tick_clock();
-  net_set_poll_ms(AWAKE_POLL_MS);
   Serial.println("[standby] wake");
 }
 
