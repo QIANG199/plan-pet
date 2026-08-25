@@ -84,3 +84,17 @@ uint8_t i2c_master_touch_write_read(i2c_master_dev_handle_t dev_handle, uint8_t 
   if (i2c_master_bus_wait_all_done(touch_bus_handle, i2c_done_ticks) != ESP_OK) return ESP_FAIL;
   return i2c_master_transmit_receive(dev_handle, writeBuf, writeLen, readBuf, readLen, i2c_xfer_ticks);
 }
+
+/* Touch health probe: distinguishes a dead AXS15231B (probe fails, lines
+ * still high) from a clamped bus (a line reads low). Called at most every 5s
+ * while touch reads keep failing (see touch_read_cb). */
+#include "driver/gpio.h"
+#include "esp_timer.h"
+#include "esp_log.h"
+void i2c_touch_diag(void)
+{
+  esp_err_t pr = i2c_master_probe(touch_bus_handle, TOUCH_I2C_ADDR, pdMS_TO_TICKS(100));
+  ESP_LOGI("i2c1", "probe=0x%02X SCL=%d SDA=%d t=%lld", (int)pr,
+           gpio_get_level((gpio_num_t)PIN_TOUCH_SCL), gpio_get_level((gpio_num_t)PIN_TOUCH_SDA),
+           esp_timer_get_time() / 1000000);
+}

@@ -5,6 +5,7 @@
 #include <Arduino.h>
 #include "HWCDC.h"
 #include "bsp/lcd_bl_pwm_bsp.h"
+#include "standby.h"
 
 static const int PIN_VBAT = 4;
 static const int PIN_PWR = 16;   /* power key, active low */
@@ -366,6 +367,7 @@ void power_read(bool *charging, int *pct) {
   static int heldPct = -2;
 
   if (usb && !lastUsb) {
+    standby_request_wake(); /* plugging in means someone is back at the desk */
     hold = true;
     heldPct = shownPct >= 0 ? shownPct : p;
   }

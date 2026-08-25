@@ -6,7 +6,6 @@
 #include "ui/ui_boot.h"
 #include "ui/ui_settings.h"
 #include "bsp/lcd_bl_pwm_bsp.h"
-#include "bsp/lvgl_port.h"
 #include "lvgl.h"
 
 /* Pet enters "sleeping" after SLEEP_ENTER_S on the server (pet.js); the
@@ -52,21 +51,23 @@ static void enter_sleep(bool forced) {
   forcedEntry = forced;
   entryPetState = net_snapshot().petState;
   ui_set_sleep(true);
-  lvgl_port_panel_disp_off(true);
   lcd_bl_pwm_bsp_off();
+  /* No panel DISPOFF here: the AXS15231B is one chip for display + touch, and
+   * display-off hangs its touch I2C, which then stalls the LVGL lock and
+   * starves every wake source (touch, BOOT, serial). */
   net_set_poll_ms(ASLEEP_POLL_MS);
   net_sleep_enter();
-  setCpuFrequencyMhz(80); /* WiFi needs >=80; rendering is paused anyway */
+  /* No setCpuFrequencyMhz() here: the Arduino hal resets all APB peripherals
+   * (I2C touch included) when the clock tree is reconfigured, which killed
+   * every wake source. Not worth it for ~10mA. */
   Serial.println("[standby] sleep");
 }
 
 static void wake_up() {
   asleep = false;
   forcedEntry = false;
-  setCpuFrequencyMhz(240);
   net_sleep_exit();
   net_set_poll_ms(AWAKE_POLL_MS);
-  lvgl_port_panel_disp_off(false);
   lcd_bl_pwm_bsp_on(config_bright());
   ui_set_sleep(false); /* clears the gate before the setters below */
   ui_apply(net_snapshot());

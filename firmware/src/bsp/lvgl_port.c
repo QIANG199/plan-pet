@@ -15,7 +15,6 @@
 
 static const char *TAG = "lvgl_port";
 static SemaphoreHandle_t lvgl_mux = NULL;
-static esp_lcd_panel_handle_t lcd_panel = NULL;
 
 static uint16_t *trans_buf_1 = NULL;
 uint8_t *lvgl_dest = NULL;                /* rotation buffer */
@@ -107,9 +106,17 @@ static void port_flush_cb(lv_display_t * disp, const lv_area_t * area, uint8_t *
  * big-endian pairs at buff[2..5]. */
 static void touch_read_cb(lv_indev_t * indev, lv_indev_data_t *indevData)
 {
+  static int64_t lastDiag;
+  static bool once;
   uint8_t read_touchpad_cmd[11] = {0xb5, 0xab, 0xa5, 0x5a, 0x0, 0x0, 0x0, 0x0e, 0x0, 0x0, 0x0};
   uint8_t buff[32] = {0};
-  ESP_ERROR_CHECK_WITHOUT_ABORT(i2c_master_touch_write_read(disp_touch_dev_handle, read_touchpad_cmd, 11, buff, 32));
+  esp_err_t er = i2c_master_touch_write_read(disp_touch_dev_handle, read_touchpad_cmd, 11, buff, 32);
+  int64_t nowUs = esp_timer_get_time();
+  if (!once || (er != ESP_OK && nowUs - lastDiag > 5000000)) {
+    once = true;
+    lastDiag = nowUs;
+    i2c_touch_diag();
+  }
   uint16_t pointX;
   uint16_t pointY;
   pointX = (((uint16_t)buff[2] & 0x0f) << 8) | (uint16_t)buff[3];
@@ -138,13 +145,6 @@ void lvgl_port_unlock(void)
 {
   assert(lvgl_mux && "lvgl_port_init must be called first");
   xSemaphoreGive(lvgl_mux);
-}
-
-/* Blank the panel itself (DISPOFF 0x28) so its driver IC and bias rail stop
- * drawing while the screen sleeps; ON restores it before the UI repaints. */
-void lvgl_port_panel_disp_off(bool off)
-{
-  if (lcd_panel) esp_lcd_panel_disp_off(lcd_panel, off);
 }
 
 static void lvgl_port_task(void *arg)
@@ -222,8 +222,6 @@ void lvgl_port_init(void)
 
   ESP_LOGI(TAG, "Install panel driver");
   ESP_ERROR_CHECK(esp_lcd_new_panel_axs15231b(panel_io, &panel_config, &panel));
-
-  lcd_panel = panel;
 
   ESP_ERROR_CHECK(gpio_set_level(PIN_LCD_RST, 1));
   vTaskDelay(pdMS_TO_TICKS(30));
