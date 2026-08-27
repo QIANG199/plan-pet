@@ -1,5 +1,19 @@
-const GLM_URL = "https://api.z.ai/api/monitor/usage/quota/limit";
+const DEFAULT_BASE = "https://api.z.ai";
+const QUOTA_PATH = "/api/monitor/usage/quota/limit";
 const { toUnixSec } = require("./lib/text");
+
+function monitorUrl(base) {
+  return `${String(base || DEFAULT_BASE).replace(/\/+$/, "")}${QUOTA_PATH}`;
+}
+
+/* z.ai (global) takes the bare key; bigmodel (CN) gateways expect Bearer. */
+function authHeader(apiKey, bearer) {
+  return bearer ? `Bearer ${apiKey}` : apiKey;
+}
+
+function wantBearerRetry(status) {
+  return status === 401 || status === 403;
+}
 
 function bar(limit) {
   if (!limit) return null;
@@ -40,10 +54,10 @@ function mapQuota(payload) {
   };
 }
 
-async function fetchQuota(apiKey) {
-  const res = await fetch(GLM_URL, {
+async function callQuota(url, apiKey, bearer) {
+  const res = await fetch(url, {
     headers: {
-      Authorization: apiKey,
+      Authorization: authHeader(apiKey, bearer),
       "Content-Type": "application/json",
     },
   });
@@ -52,12 +66,27 @@ async function fetchQuota(apiKey) {
   try {
     json = JSON.parse(text);
   } catch {
-    throw new Error(`glm HTTP ${res.status}: not JSON`);
+    json = null;
   }
   if (!res.ok) {
-    throw new Error(`glm HTTP ${res.status}: ${json.msg || text.slice(0, 120)}`);
+    const msg = (json && json.msg) || text.slice(0, 120);
+    const err = new Error(`glm HTTP ${res.status}: ${msg}`);
+    err.status = res.status;
+    throw err;
   }
+  if (json == null) throw new Error(`glm HTTP ${res.status}: not JSON`);
   return mapQuota(json);
 }
 
-module.exports = { fetchQuota, mapQuota, pickWindows };
+async function fetchQuota(apiKey, base) {
+  const url = monitorUrl(base);
+  try {
+    return await callQuota(url, apiKey, false);
+  } catch (err) {
+    if (!wantBearerRetry(err.status)) throw err;
+  }
+  /* Bare-key rejection means the host wants Bearer; retry once. */
+  return await callQuota(url, apiKey, true);
+}
+
+module.exports = { fetchQuota, mapQuota, pickWindows, monitorUrl, authHeader, wantBearerRetry };

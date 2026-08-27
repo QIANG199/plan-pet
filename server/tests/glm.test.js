@@ -1,6 +1,12 @@
 const test = require("node:test");
 const assert = require("node:assert");
-const { mapQuota, pickWindows } = require("../src/glm");
+const {
+  mapQuota,
+  pickWindows,
+  monitorUrl,
+  authHeader,
+  wantBearerRetry,
+} = require("../src/glm");
 
 function limit(type, unit, number, resetMs, percentage) {
   return { type, unit, number, nextResetTime: resetMs, percentage };
@@ -58,4 +64,25 @@ test("mapQuota throws on failure payloads and missing windows", () => {
   assert.throws(() => mapQuota({ success: false, msg: "bad key" }), /bad key/);
   assert.throws(() => mapQuota({ success: true, data: { limits: [] } }), /TOKENS_LIMIT/);
   assert.throws(() => mapQuota(null), /glm request failed/);
+});
+
+test("monitorUrl joins region base with the quota path", () => {
+  assert.equal(monitorUrl(), "https://api.z.ai/api/monitor/usage/quota/limit");
+  assert.equal(
+    monitorUrl("https://open.bigmodel.cn"),
+    "https://open.bigmodel.cn/api/monitor/usage/quota/limit"
+  );
+  assert.equal(monitorUrl("https://open.bigmodel.cn/"), "https://open.bigmodel.cn/api/monitor/usage/quota/limit");
+});
+
+test("authHeader sends bare key by default and Bearer on retry", () => {
+  assert.equal(authHeader("k-123", false), "k-123");
+  assert.equal(authHeader("k-123", true), "Bearer k-123");
+});
+
+test("wantBearerRetry triggers only on 401/403", () => {
+  assert.equal(wantBearerRetry(401), true);
+  assert.equal(wantBearerRetry(403), true);
+  assert.equal(wantBearerRetry(404), false);
+  assert.equal(wantBearerRetry(500), false);
 });

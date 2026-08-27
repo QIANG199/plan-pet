@@ -46,7 +46,7 @@ function dashboard() {
 
 async function refreshGlm() {
   try {
-    cache.glm = await fetchQuota(env.zaiKey);
+    cache.glm = await fetchQuota(env.zaiKey, env.zaiApiBase);
     const week = cache.glm.week ? `${cache.glm.week.pct}%` : "none";
     console.log(`[glm] ok  5h=${cache.glm.h5.pct}%  7d=${week}`);
   } catch (err) {

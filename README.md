@@ -47,6 +47,9 @@ ZAI_API_KEY=你的Z.ai密钥
 PANEL_TOKEN=和面板约定的口令
 HOST=0.0.0.0
 PORT=3737
+
+# 可选：GLM 套餐区域。默认国际版 api.z.ai；用国内 bigmodel 编码套餐时改成：
+# ZAI_API_BASE=https://open.bigmodel.cn
 ```
 
 `PANEL_TOKEN` 是面板和中转服务之间的共享口令，**不是** Z.ai Key，也不是 Cursor 登录态。
