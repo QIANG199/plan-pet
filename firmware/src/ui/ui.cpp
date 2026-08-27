@@ -124,7 +124,7 @@ static void remainText(time_t at, char *buf, size_t n) {
   long s = (long)(at - now);
   if (s < 0) s = 0;
   if (s >= 86400) {
-    snprintf(buf, n, "%ldd", s / 86400);
+    snprintf(buf, n, "%ldd%ldh", s / 86400, (s % 86400) / 3600);
     return;
   }
   long h = s / 3600;
