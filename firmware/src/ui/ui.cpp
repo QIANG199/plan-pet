@@ -14,6 +14,7 @@ lv_obj_t *statusCard, *planCard, *petZone;
 lv_obj_t *timeLbl, *rule, *wifiLbl, *battLbl, *battPct;
 lv_obj_t *glmTitle, *glmDot, *glmK1, *glmR1, *glmP1, *glmBar1;
 lv_obj_t *glmK2, *glmR2, *glmP2, *glmBar2;
+static lv_obj_t *glmPeak; /* 「• 3x」peak-pricing badge, shown after GLM */
 lv_obj_t *curTitle, *curDot, *curReset;
 lv_obj_t *curK1, *curP1, *curBar1, *curK2, *curP2, *curBar2;
 static lv_obj_t *ovlCap, *ovlBig, *ovlRing;
@@ -24,6 +25,30 @@ static bool wifiOn = true;
 static bool srvOn = true;
 static bool uiAsleep = false;
 static lv_obj_t *sleepScr;
+static bool glmPeakOn = false;
+
+/* Peak-pricing badge "• 3x": bullet takes the theme ink via the label style,
+ * only "3x" is hard-colored to UI_WARN (#f0805a) through label recolor. */
+static void drawGlmPeak() {
+  lv_label_set_text(glmPeak, "\xE2\x80\xA2 #f0805a 3x#");
+  lv_obj_clear_flag(glmPeak, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_update_layout(glmTitle);
+  lv_coord_t x = lv_obj_get_width(glmTitle) + 4;
+  lv_obj_align(glmPeak, LV_ALIGN_LEFT_MID, x, 0);
+  lv_obj_update_layout(glmPeak);
+  lv_obj_align(glmDot, LV_ALIGN_LEFT_MID, x + lv_obj_get_width(glmPeak) + 5, 0);
+}
+
+void ui_set_glm_peak(bool on) {
+  if (on == glmPeakOn) return;
+  glmPeakOn = on;
+  if (on) {
+    drawGlmPeak();
+    return;
+  }
+  lv_obj_add_flag(glmPeak, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_align(glmDot, LV_ALIGN_LEFT_MID, 40, 0); /* back to the idle slot */
+}
 
 static void applyTheme() {
   const UiPalette &p = ui_palette();
@@ -37,6 +62,7 @@ static void applyTheme() {
   lv_obj_set_style_text_color(battLbl, p.ink2, 0);
   lv_obj_set_style_text_color(battPct, p.ink2, 0);
   lv_obj_set_style_text_color(glmTitle, p.ink, 0);
+  lv_obj_set_style_text_color(glmPeak, p.ink, 0);
   lv_obj_set_style_text_color(curTitle, p.ink, 0);
   lv_obj_set_style_text_color(glmK1, p.ink2, 0);
   lv_obj_set_style_text_color(glmK2, p.ink2, 0);
@@ -56,6 +82,7 @@ static void applyTheme() {
   lv_obj_set_style_text_color(ovlCap, p.ink2, 0);
   lv_obj_set_style_arc_color(ovlRing, p.track, LV_PART_MAIN);
   lv_obj_set_style_text_color(setupHint, p.ink2, 0);
+  if (glmPeakOn) drawGlmPeak(); /* theme flip: rebuild recolor positions/colors */
   ui_pet_show_frame();
   ui_set_link(wifiOn, srvOn);
 }
@@ -213,7 +240,9 @@ void ui_create() {
   glmTitle = ui_mk_lbl(glmHead, &lv_font_montserrat_12, lv_color_white());
   lv_label_set_text(glmTitle, "GLM");
   glmDot = ui_mk_dot(glmHead);
-  lv_obj_align(glmDot, LV_ALIGN_LEFT_MID, 40, 0);
+  lv_obj_align(glmDot, LV_ALIGN_LEFT_MID, 40, 0); /* "GLM" idle slot; moves right while the peak badge shows */
+  glmPeak = ui_mk_lbl(glmHead, &lv_font_montserrat_12, lv_color_white());
+  lv_label_set_recolor(glmPeak, true); /* text re-colored per theme in drawGlmPeak() */
 
   ui_mk_row(glmBlock, &glmK1, &glmR1, &glmP1);
   lv_label_set_text(glmK1, "5h");
@@ -280,6 +309,7 @@ static void setBar(lv_obj_t *bar, lv_obj_t *pctLbl, lv_obj_t *resetLbl, const Qu
 
 void ui_apply(const Snapshot &s) {
   if (uiAsleep) return; /* no redraws while the backlight is off */
+  ui_set_glm_peak(s.glmPeak);
   setBar(glmBar1, glmP1, glmR1, s.h5, !s.glmOk);
   setBar(glmBar2, glmP2, glmR2, s.week, !s.glmOk);
   if (!s.glmOk) lv_obj_add_flag(glmBar2, LV_OBJ_FLAG_HIDDEN);

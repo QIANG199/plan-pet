@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const { execFile } = require("child_process");
 const env = require("./env");
-const { fetchQuota } = require("./glm");
+const { fetchQuota, isPeakNow } = require("./glm");
 const { fetchQuota: fetchCursorQuota } = require("./cursor");
 const { createPet } = require("./pet");
 const { panelRoundtrip, listCandidates } = require("./panel-link");
@@ -39,7 +39,8 @@ function dashboard() {
   return {
     ts: Math.floor(Date.now() / 1000),
     cursor: cache.cursor,
-    glm: cache.glm,
+    /* peak 在响应时点算，不受 5 分钟刷新间隔影响，14/18 点边界即时翻转 */
+    glm: { ...cache.glm, peak: isPeakNow() },
     pet: pet.snapshot(),
   };
 }

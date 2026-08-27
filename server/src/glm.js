@@ -2,6 +2,15 @@ const DEFAULT_BASE = "https://api.z.ai";
 const QUOTA_PATH = "/api/monitor/usage/quota/limit";
 const { toUnixSec } = require("./lib/text");
 
+/* GLM 计费高峰：北京时间每天 14:00–18:00 用量按 3 倍计。 */
+const PEAK_START_HOUR = 14;
+const PEAK_END_HOUR = 18;
+
+function isPeakNow(now = Date.now()) {
+  const bjHour = Math.floor((now / 1000 + 8 * 3600) % 86400 / 3600);
+  return bjHour >= PEAK_START_HOUR && bjHour < PEAK_END_HOUR;
+}
+
 function monitorUrl(base) {
   return `${String(base || DEFAULT_BASE).replace(/\/+$/, "")}${QUOTA_PATH}`;
 }
@@ -89,4 +98,4 @@ async function fetchQuota(apiKey, base) {
   return await callQuota(url, apiKey, true);
 }
 
-module.exports = { fetchQuota, mapQuota, pickWindows, monitorUrl, authHeader, wantBearerRetry };
+module.exports = { fetchQuota, mapQuota, pickWindows, monitorUrl, authHeader, wantBearerRetry, isPeakNow };

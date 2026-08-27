@@ -48,6 +48,7 @@ static void parseDash(const String &body) {
 
   JsonObject glm = doc["glm"];
   snap.glmOk = glm["ok"] | false;
+  snap.glmPeak = snap.glmOk && (glm["peak"] | false);
   snap.h5.present = snap.glmOk && !glm["h5"].isNull();
   if (snap.h5.present) {
     snap.h5.pct = glm["h5"]["pct"] | 0;

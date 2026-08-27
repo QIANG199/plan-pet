@@ -11,6 +11,7 @@ struct QuotaBar {
 
 struct Snapshot {
   bool glmOk;
+  bool glmPeak; /* GLM 高峰计费时段（北京时间 14–18 点，用量 3 倍） */
   QuotaBar h5;
   QuotaBar week;
   bool cursorOk;

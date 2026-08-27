@@ -36,6 +36,7 @@ python firmware/tools/bake_pet.py
 - 进度条分档按**已用** 70% / 90% 变色，不是按余量。
 - 面板直连显式配置的 PC IP 访问中转服务（串口 `HOST` / 触屏设置页写 NVS）。mDNS 发现已移除（目标局域网组播不通 + 逐次解析阻塞轮询，2026-08 否决）；把 IP 编译进固件仍然禁止。DHCP 换 IP 后需重设 HOST。
 - GLM 的 5h / 周窗口都读 `TOKENS_LIMIT`；`TIME_LIMIT` 是 MCP 月度，面板不做。
+- GLM 高峰时段：北京时间每天 14–18 点用量按 3 倍计。窗口判断在服务端（`glm.peak`，响应时点算），固件只在 GLM 标题后渲染「• 3x」（3x 用进度条橙），不自己算时区。
 - 令牌语义严格区分：`PANEL_TOKEN` 是面板↔中转服务的共享口令；Z.ai Key 和 Cursor 登录态是另外的东西，文档里别混称 API Key。
 - hooks 事件名唯一权威在 `server/src/lib/events.js`（pet.js、两个适配器、install.js 都从这取）；桌宠状态名同时是固件 `ui/ui_pet.cpp` 与 `firmware/tools/bake_pet.py` 的跨语言契约。
 

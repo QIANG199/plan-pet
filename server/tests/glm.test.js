@@ -6,6 +6,7 @@ const {
   monitorUrl,
   authHeader,
   wantBearerRetry,
+  isPeakNow,
 } = require("../src/glm");
 
 function limit(type, unit, number, resetMs, percentage) {
@@ -85,4 +86,13 @@ test("wantBearerRetry triggers only on 401/403", () => {
   assert.equal(wantBearerRetry(403), true);
   assert.equal(wantBearerRetry(404), false);
   assert.equal(wantBearerRetry(500), false);
+});
+
+test("isPeakNow marks Beijing 14:00-18:00 (no DST, UTC+8 is exact)", () => {
+  const at = (utcH, utcM) => Date.UTC(2026, 7, 27, utcH, utcM, 0);
+  assert.equal(isPeakNow(at(6, 0)), true); /* 北京 14:00 整 */
+  assert.equal(isPeakNow(at(9, 59)), true); /* 北京 17:59 */
+  assert.equal(isPeakNow(at(10, 0)), false); /* 北京 18:00 整，结束 */
+  assert.equal(isPeakNow(at(5, 59)), false); /* 北京 13:59 */
+  assert.equal(isPeakNow(at(16, 0)), false); /* 北京次日 0 点仍不在窗口 */
 });

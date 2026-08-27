@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ESP32 桌面额度面板 · 屏幕设计稿 v11</title>
+<title>ESP32 桌面额度面板 · 屏幕设计稿 v12</title>
 <style>
 :root{
   --page-bg:#f2f4f7; --card:#ffffff; --ink:#1c2430; --ink2:#5a6575; --ink3:#8a93a3;
@@ -59,6 +59,7 @@ h1{font-size:22px;font-weight:600}
 .screen[data-theme=dark] .brand{color:#e8ecf3}
 .screen[data-theme=light] .brand{color:#1c2430}
 .dot{width:6px;height:6px;border-radius:50%;background:var(--ok);flex:none}
+.title .peak{color:var(--warn)}
 
 .lblrow{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:11px;transition:color .25s}
 .screen[data-theme=dark] .lblrow{color:#9aa3b2}
@@ -119,8 +120,9 @@ figcaption b{color:var(--ink);font-weight:500}
 <div class="wrap">
 <h1>ESP32 桌面额度面板 · 屏幕设计稿</h1>
 <p class="meta">
-v11 · <b>已定稿</b> · 物理 <b>172 × 640</b>，横屏画布 640 × 172，本稿 <b>1:1 像素</b>，预览等比 1.5×<br>
-屏上全英文：GLM <b>5h / 7d</b>，CURSOR <b>composer &amp; grok / other</b> · 百分比靠右 · 进度条距卡底 8px
+v12 · <b>已定稿</b> · 物理 <b>172 × 640</b>，横屏画布 640 × 172，本稿 <b>1:1 像素</b>，预览等比 1.5×<br>
+屏上全英文：GLM <b>5h / 7d</b>，CURSOR <b>composer &amp; grok / other</b> · 百分比靠右 · 进度条距卡底 8px<br>
+v12 新增：高峰时段（北京时间 14–18 点）GLM 标题显示 <code>• 3x</code>，「3x」用进度条橙
 </p>
 
 <div class="devices">
@@ -141,7 +143,7 @@ v11 · <b>已定稿</b> · 物理 <b>172 × 640</b>，横屏画布 640 × 172，
 </div>
 <div class="col-mid">
 <div class="card">
-<div class="title"><span class="brand">GLM</span><span class="dot" title="运行中"></span></div>
+<div class="title"><span class="brand">GLM</span><span class="brand">· <span class="peak">3x</span></span><span class="dot" title="运行中"></span></div>
 <div class="metric">
 <div class="lblrow"><span class="k win">5h</span><span class="tail"><span class="reset">2h08m</span><span class="v">12%</span></span></div>
 <div class="bar"><div class="fill" data-pct="12"></div></div>
@@ -207,7 +209,7 @@ v11 · <b>已定稿</b> · 物理 <b>172 × 640</b>，横屏画布 640 × 172，
 </div>
 <div class="col-mid">
 <div class="card">
-<div class="title"><span class="brand">GLM</span><span class="dot" title="运行中"></span></div>
+<div class="title"><span class="brand">GLM</span><span class="brand">· <span class="peak">3x</span></span><span class="dot" title="运行中"></span></div>
 <div class="metric">
 <div class="lblrow"><span class="k win">5h</span><span class="tail"><span class="reset">2h08m</span><span class="v">12%</span></span></div>
 <div class="bar"><div class="fill" data-pct="12"></div></div>
@@ -276,6 +278,7 @@ v11 · <b>已定稿</b> · 物理 <b>172 × 640</b>，横屏画布 640 × 172，
 <h3>卡内文案</h3>
 <table>
 <tr><td>GLM</td><td class="px">左 <code>5h</code> / <code>7d</code>（同宽简写）；右倒计时 + 百分比</td></tr>
+<tr><td>GLM 高峰标识</td><td class="px">北京时间 14–18 点用量 3 倍：标题显示 <code>GLM · 3x</code>，「·」沿用品牌色、「3x」用进度条橙（#f0805a）；平时不显示</td></tr>
 <tr><td>CURSOR</td><td class="px">左 <code>composer &amp; grok</code> / <code>other</code>；右百分比；标题右 30d</td></tr>
 <tr><td>卡底</td><td class="px">padding-bottom 8px，末条不贴边</td></tr>
 </table>
