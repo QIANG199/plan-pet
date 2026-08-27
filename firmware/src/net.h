@@ -31,6 +31,7 @@ void net_begin();
 void net_reconnect();
 void net_loop();
 bool net_wifi_up();
+bool net_resolve_host(IPAddress &ip); /* config_host(): literal IP or DNS name */
 const Snapshot &net_snapshot();
 uint32_t net_last_ok_ms();          /* millis() of the last parsed snapshot (boot time if none) */
 bool net_server_ok();               /* WiFi up and a snapshot parsed recently */

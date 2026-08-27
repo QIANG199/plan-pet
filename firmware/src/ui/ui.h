@@ -10,5 +10,6 @@ void ui_set_sleep(bool on);                /* blank screen / restore with a 300m
 void ui_set_power(bool charging, int pct);
 void ui_tick_clock();
 void ui_set_pet_override(const char *state);
+void ui_set_ota(const char *text); /* status-card progress line; null/"" hides */
 void ui_toggle_theme();
 void ui_poll_power();

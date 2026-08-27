@@ -59,4 +59,4 @@ python firmware/tools/bake_pet.py
 - 文档、术语、注释以中文为主；提交信息用英文 conventional commits（`feat(scope): ...`）。
 - 服务端除 `serialport` 外纯 Node 标准库，不引框架；新增依赖需有充分理由。
 - `.env` 解析唯一实现在 `server/src/lib/dotenv.js`（server 与 hooks 共用）；改键名先看 `env.js` 和 `common.js` 两处消费。
-- 串口命令清单以 `firmware/README.md` 为准（WIFI/PASS/TOKEN/HOST/PORT/PET/BRIGHT/SLEEP/OFF/REBOOT/SETUP/SHOW）。
+- 串口命令清单以 `firmware/README.md` 为准（WIFI/PASS/TOKEN/HOST/PORT/PET/BRIGHT/SLEEP/OFF/REBOOT/OTA/SETUP/SHOW）。

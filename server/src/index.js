@@ -6,6 +6,7 @@ const env = require("./env");
 const { fetchQuota, isPeakNow } = require("./glm");
 const { fetchQuota: fetchCursorQuota } = require("./cursor");
 const { createPet } = require("./pet");
+const { otaInfo, otaBinPath } = require("./ota");
 const { panelRoundtrip, listCandidates } = require("./panel-link");
 const { EVENT_SET } = require("./lib/events");
 
@@ -154,6 +155,33 @@ const server = http.createServer(async (req, res) => {
       console.error("[panel] setup failed", err.message);
       json(res, 500, { ok: false, error: err.message });
     }
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/ota/info") {
+    const info = otaInfo();
+    json(res, info.ok ? 200 : 404, info);
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/ota/bin") {
+    const info = otaInfo();
+    if (!info.ok) {
+      json(res, 404, { ok: false, error: "firmware.bin not built" });
+      return;
+    }
+    fs.readFile(otaBinPath(), (err, data) => {
+      if (err) {
+        json(res, 500, { ok: false, error: err.message });
+        return;
+      }
+      console.log(`[ota] serve build=${info.build} ${data.length}B`);
+      res.writeHead(200, {
+        "Content-Type": "application/octet-stream",
+        "Content-Length": data.length,
+      });
+      res.end(data);
+    });
     return;
   }
 

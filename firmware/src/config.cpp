@@ -1,5 +1,6 @@
 #include "config.h"
 #include "net.h"
+#include "ota.h"
 #include "standby.h"
 #include "ui/ui.h"
 #include "ui/ui_settings.h"
@@ -117,6 +118,9 @@ static void handleLine(String line) {
     Serial.println("ok reboot");
     delay(50);
     ESP.restart();
+  } else if (cmd == "OTA") {
+    Serial.println("ok ota: checking update now");
+    ota_force();
   } else if (cmd == "SETUP") {
     /* Dev shortcut: open the settings page over serial; "SETUP EDIT <1-3>"
        opens a field editor, "SETUP CLOSE" leaves the page. */
@@ -145,6 +149,7 @@ static void handleLine(String line) {
     Serial.println("SLEEP <0-90>|NOW");
     Serial.println("OFF");
     Serial.println("REBOOT");
+    Serial.println("OTA");
     Serial.println("SHOW");
   } else {
     Serial.println("unknown; HELP");

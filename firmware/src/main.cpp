@@ -5,6 +5,7 @@
 #include "bsp/lcd_bl_pwm_bsp.h"
 #include "config.h"
 #include "net.h"
+#include "ota.h"
 #include "standby.h"
 #include "ui/ui.h"
 #include "ui/ui_settings.h"
@@ -33,6 +34,7 @@ void setup() {
   power_relatch();
   rtc_begin();
   net_begin();
+  ota_begin();
   Serial.println("plan-pet firmware");
   Serial.printf("psram %u bytes\n", ESP.getPsramSize());
 }
@@ -40,6 +42,7 @@ void setup() {
 void loop() {
   config_poll_serial();
   net_loop();
+  ota_loop();
   static uint32_t lastClock;
   static uint32_t lastPower;
   static uint32_t lastKeyUi;

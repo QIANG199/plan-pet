@@ -82,7 +82,7 @@ static bool usableV4(const IPAddress &ip) {
   return true;
 }
 
-static bool resolveHost(IPAddress &ip) {
+bool net_resolve_host(IPAddress &ip) {
   String host = config_host();
   host.trim();
   if (ip.fromString(host)) return true;
@@ -97,7 +97,7 @@ static int pollOnce() {
   if (config_token().isEmpty()) return -1;
 
   IPAddress ip;
-  if (!resolveHost(ip)) {
+  if (!net_resolve_host(ip)) {
     Serial.println("dns fail " + config_host() + " (try HOST <pc-ip>)");
     lastHttp = -2;
     return -2;

@@ -31,6 +31,16 @@ python -m platformio device monitor
 
 `platformio.ini` 里的 `core_dir`、COM 口、`-I...Network/src` 按本机改。监视波特率 115200。
 
+## OTA 升级
+
+面板经中转服务自动检查固件更新：醒着、服务可达、且 USB 供电或电量 ≥30% 时下载安装（默认每 6 小时一次，开机 2 分钟后首查）。屏幕左侧状态列显示 `UPD x%`，校验通过后自动重启切入新固件；失败显示 `UPD fail` 数秒，1 小时后重试，旧固件不受任何影响。
+
+- 固件来源：中转服务读 `firmware/.pio/build/desktop-pet/firmware.bin`（`.env` 的 `OTA_BIN` 可覆盖），端点 `GET /api/ota/info` / `GET /api/ota/bin`
+- 版本号免维护：服务端取 bin 的 mtime 作 build 号，与固件编译时刻比较，**重新编译 = 新版本**；15 分钟内的重编译视为同一构建（bin 落盘天然晚于编译时刻数分钟），跨天/跨小时的构建才触发升级
+- 串口 `OTA` 命令立即检查升级（跳过电量护栏；息屏中会先唤醒）
+- 首次启用需 USB 烧录一次含 OTA 功能的固件，之后迭代不再插线
+- 极端情况：写入期间断电 = 仍跑旧固件；仅当新固件本身逻辑挂死时需插线重烧（无自动回滚）
+
 ## 按键
 
 | 键 | 操作 |
@@ -78,6 +88,7 @@ BRIGHT 8-255
 SLEEP <0-90>  息屏超时（分钟，桌宠入睡后起算，0=关闭）；SLEEP NOW 立即息屏，SLEEP 查看
 OFF          触发关机倒计时（再按 PWR 可取消）
 REBOOT       重启
+OTA          立即检查并安装固件更新（WiFi，见「OTA 升级」）
 SETUP        远程打开设置页（开发调试；SETUP EDIT <1-3> 直接开某字段编辑器，SETUP CLOSE 退出）
 SHOW
 PET idle|thinking|typing|happy|error|sleeping|auto

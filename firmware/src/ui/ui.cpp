@@ -19,6 +19,7 @@ lv_obj_t *curTitle, *curDot, *curReset;
 lv_obj_t *curK1, *curP1, *curBar1, *curK2, *curP2, *curBar2;
 static lv_obj_t *ovlCap, *ovlBig, *ovlRing;
 static lv_obj_t *setupHint;
+static lv_obj_t *otaLbl; /* "UPD x%" progress line in the reserved mid slot */
 static bool hintShown;
 
 static bool wifiOn = true;
@@ -80,6 +81,7 @@ static void applyTheme() {
   lv_obj_set_style_bg_color(curBar1, p.track, LV_PART_MAIN);
   lv_obj_set_style_bg_color(curBar2, p.track, LV_PART_MAIN);
   lv_obj_set_style_text_color(ovlCap, p.ink2, 0);
+  lv_obj_set_style_text_color(otaLbl, p.ink2, 0);
   lv_obj_set_style_arc_color(ovlRing, p.track, LV_PART_MAIN);
   lv_obj_set_style_text_color(setupHint, p.ink2, 0);
   if (glmPeakOn) drawGlmPeak(); /* theme flip: rebuild recolor positions/colors */
@@ -225,6 +227,14 @@ void ui_create() {
   lv_obj_add_flag(setupHint, LV_OBJ_FLAG_HIDDEN);
   start_hint_blink();
 
+  /* OTA progress shares the reserved mid slot; only shown while awake with
+   * WiFi up, so it never collides with the setup hint. */
+  otaLbl = ui_mk_lbl(statusCard, &lv_font_montserrat_12, lv_color_white());
+  lv_obj_set_width(otaLbl, lv_pct(100));
+  lv_obj_set_style_text_align(otaLbl, LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_align(otaLbl, LV_ALIGN_TOP_MID, 0, 66);
+  lv_obj_add_flag(otaLbl, LV_OBJ_FLAG_HIDDEN);
+
   planCard = lv_obj_create(uiScr);
   lv_obj_set_pos(planCard, 94, 6);
   lv_obj_set_size(planCard, 372, 160);
@@ -337,6 +347,19 @@ void ui_set_pet_override(const char *state) {
   }
   if (lvgl_port_lock(50)) {
     ui_pet_show_frame();
+    lvgl_port_unlock();
+  }
+}
+
+void ui_set_ota(const char *text) {
+  if (uiAsleep) return;
+  if (lvgl_port_lock(50)) {
+    if (!text || !*text) {
+      lv_obj_add_flag(otaLbl, LV_OBJ_FLAG_HIDDEN);
+    } else {
+      lv_label_set_text(otaLbl, text);
+      lv_obj_clear_flag(otaLbl, LV_OBJ_FLAG_HIDDEN);
+    }
     lvgl_port_unlock();
   }
 }
