@@ -2,7 +2,8 @@
 
 Source GIFs: Clawd on Desk (https://github.com/rullerzhou-afk/clawd-on-desk)
   assets/gif/ — artwork is NOT covered by that repo's AGPL; see assets/LICENSE.
-  Default directory: D:\\develop\\clawd-on-desk\\assets\\gif
+  Default directory: <repo>/assets/gif (gitignored local copy; clawd-on-desk
+  was uninstalled 2026-09 — re-fetch from upstream if the folder is missing)
   Override: environment variable CLAWD_GIF_DIR
 """
 
@@ -15,10 +16,8 @@ from PIL import Image, ImageSequence
 
 ROOT = Path(__file__).resolve().parents[2]
 GIF_DIR = Path(
-    os.environ.get(
-        "CLAWD_GIF_DIR",
-        r"D:\develop\clawd-on-desk\assets\gif",
-    )
+    os.environ.get("CLAWD_GIF_DIR")
+    or ROOT / "assets" / "gif",
 )
 OUT_BIN = ROOT / "firmware" / "src" / "pet_frames.bin"
 OUT_S = ROOT / "firmware" / "src" / "pet_blob.S"

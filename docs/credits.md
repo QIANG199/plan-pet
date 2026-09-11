@@ -6,7 +6,7 @@ PlanPet **自己的代码**以仓库根目录 [Apache License 2.0](../LICENSE) �
 
 屏上 clawd 动画**不是**本仓库原创，也**不随 Git 分发**（烤出来的 `pet_frames.bin` / `pet_blob.S` 已 gitignore）。
 
-编译前 `firmware/tools/bake_pet.py` 从本机 [Clawd on Desk](https://github.com/rullerzhou-afk/clawd-on-desk) 的 `assets/gif/` 读取 GIF，合成到深/浅底上再转成 RGB565。
+编译前 `firmware/tools/bake_pet.py` 从本仓库 `assets/gif/`（gitignore 的本地副本，取自 [Clawd on Desk](https://github.com/rullerzhou-afk/clawd-on-desk) 同名目录）读取 GIF，合成到深/浅底上再转成 RGB565。
 
 | 项 | 说明 |
 |---|---|
@@ -15,7 +15,7 @@ PlanPet **自己的代码**以仓库根目录 [Apache License 2.0](../LICENSE) �
 | 源码许可 | [AGPL-3.0](https://github.com/rullerzhou-afk/clawd-on-desk/blob/main/LICENSE)（仅指其程序源码） |
 | 贴图许可 | [assets/LICENSE](https://github.com/rullerzhou-afk/clawd-on-desk/blob/main/assets/LICENSE)：**All Rights Reserved**。Clawd 形象属 [Anthropic](https://www.anthropic.com)；像素稿为同人，**不得商用**。Calico 等其它主题版权归原画师 |
 
-本仓库**没有**把 GIF 拷进来，也**没有**复用 clawd 的 `hooks/cursor-hook.js`。hooks 是自写适配器，安装时只追加，可与 Clawd on Desk 同时运行。
+GIF **不入库**（`assets/gif/` 已 gitignore，仅本机烤帧用），也**没有**复用 clawd 的 `hooks/cursor-hook.js`。hooks 是自写适配器，安装时只追加。
 
 ## 硬件与固件周边
 
@@ -37,4 +37,6 @@ PlanPet **自己的代码**以仓库根目录 [Apache License 2.0](../LICENSE) �
 | 项目 | 用途 | 链接 |
 |---|---|---|
 | cc-switch #1588 | GLM `TOKENS_LIMIT` / `TIME_LIMIT` 字段含义 | https://github.com/farion1231/cc-switch/issues/1588 |
+| cc-switch `coding_plan.rs` | OpenCode Go 用量路由与逐窗口解析口径 | https://github.com/farion1231/cc-switch |
+| Claude Code hooks 文档 | 事件名、payload 字段（`hook_event_name` / `tool_name` / `error`）与配置写法 | https://docs.claude.com/en/docs/claude-code/hooks |
 | cursor-usage / cursor-usage-monitor | Cursor `usage-summary` 字段对照 | https://github.com/FreePeak/cursor-usage · https://github.com/lixwen/cursor-usage-monitor |

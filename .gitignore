@@ -11,3 +11,5 @@ firmware/lib/lvgl/
 **/__pycache__/
 .zcode/
 **/.mimosa/
+assets/gif/
+.runtime-verify.*
