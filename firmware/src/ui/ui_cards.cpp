@@ -84,9 +84,11 @@ void ui_dots_set_paused(bool paused) {
   if (paused) {
     lv_anim_delete(glmDot, nullptr);
     lv_anim_delete(curDot, nullptr);
+    lv_anim_delete(ocDot, nullptr);
   } else {
     dot_breathe(glmDot);
     dot_breathe(curDot);
+    dot_breathe(ocDot);
   }
 }
 

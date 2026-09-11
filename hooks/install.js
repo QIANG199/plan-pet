@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-/* Append PlanPet hooks into ~/.cursor/hooks.json and ~/.zcode/cli/config.json.
- * Idempotent: safe to re-run after a Cursor update wipes hooks.json.
+/* Append PlanPet hooks into ~/.cursor/hooks.json, ~/.zcode/cli/config.json and
+ * ~/.claude/settings.json. Idempotent: safe to re-run after a tool update wipes
+ * its config, and it never touches other people's hook entries.
  *
  *   node hooks/install.js           # install / repair
  *   node hooks/install.js status    # check only (exit 1 if incomplete)
@@ -14,12 +15,17 @@ const { EVENTS, CURSOR_TO_EVENT } = require("../server/src/lib/events");
 const ROOT = path.join(__dirname);
 const cursorHook = path.join(ROOT, "cursor-hook.js").replace(/\\/g, "/");
 const zcodeHook = path.join(ROOT, "zcode-hook.js").replace(/\\/g, "/");
+const claudeHook = path.join(ROOT, "claude-hook.js").replace(/\\/g, "/");
 const nodeBin = process.execPath.replace(/\\/g, "/");
 
 const CURSOR_EVENTS = Object.keys(CURSOR_TO_EVENT);
 const ZCODE_EVENTS = EVENTS;
+/* Claude Code uses the canonical names verbatim; no matcher = runs on every
+ * occurrence of the event (matcher is optional, see the hooks reference). */
+const CLAUDE_EVENTS = EVENTS;
 const CURSOR_FILE = path.join(os.homedir(), ".cursor", "hooks.json");
 const ZCODE_FILE = path.join(os.homedir(), ".zcode", "cli", "config.json");
+const CLAUDE_FILE = path.join(os.homedir(), ".claude", "settings.json");
 
 function readJson(file, fallback) {
   if (!fs.existsSync(file)) return fallback;
@@ -73,6 +79,21 @@ function zcodePresent(data, event) {
   );
 }
 
+function isOurClaudeHook(h) {
+  if (!h || typeof h.command !== "string") return false;
+  // Legacy folder name before the rename, plus the live absolute path.
+  return (
+    h.command.includes("desktop-pet/hooks/claude-hook.js") ||
+    h.command.includes(claudeHook)
+  );
+}
+
+function claudePresent(data, event) {
+  const list = data.hooks && data.hooks[event];
+  if (!Array.isArray(list)) return false;
+  return list.some((group) => (group.hooks || []).some(isOurClaudeHook));
+}
+
 function installCursor() {
   const data = readJson(CURSOR_FILE, { version: 1, hooks: {} });
   if (!data.hooks || typeof data.hooks !== "object") data.hooks = {};
@@ -124,14 +145,46 @@ function installZcode() {
   console.log(`[zcode]  ${ZCODE_FILE}  (+${added} events, hooks.enabled=true)`);
 }
 
+function installClaude() {
+  const data = readJson(CLAUDE_FILE, {});
+  if (!data.hooks || typeof data.hooks !== "object") data.hooks = {};
+  let added = 0;
+  let updated = 0;
+  const cmd = `"${nodeBin}" "${claudeHook}"`;
+  for (const event of CLAUDE_EVENTS) {
+    if (!Array.isArray(data.hooks[event])) data.hooks[event] = [];
+    const list = data.hooks[event];
+    let found = false;
+    for (const group of list) {
+      for (const h of group.hooks || []) {
+        if (!isOurClaudeHook(h)) continue;
+        found = true;
+        if (h.command !== cmd) {
+          h.command = cmd;
+          updated++;
+        }
+      }
+    }
+    if (found) continue;
+    /* 与用户已有条目并列追加，不动 ccstatusline / codegraph 那些 */
+    list.push({ hooks: [{ type: "command", command: cmd, timeout: 10 }] });
+    added++;
+  }
+  writeJson(CLAUDE_FILE, data);
+  console.log(`[claude] ${CLAUDE_FILE}  (+${added} events, ~${updated} updated)`);
+}
+
 function statusReport() {
   const cursorData = readJson(CURSOR_FILE, { version: 1, hooks: {} });
   const zcodeData = readJson(ZCODE_FILE, {});
+  const claudeData = readJson(CLAUDE_FILE, {});
   const cursorMissing = CURSOR_EVENTS.filter((e) => !cursorPresent(cursorData, e));
   const zcodeMissing = ZCODE_EVENTS.filter((e) => !zcodePresent(zcodeData, e));
+  const claudeMissing = CLAUDE_EVENTS.filter((e) => !claudePresent(claudeData, e));
   const cursorOk = cursorMissing.length === 0;
   const zcodeOk = zcodeMissing.length === 0;
   const zcodeEnabled = !!(zcodeData.hooks && zcodeData.hooks.enabled);
+  const claudeOk = claudeMissing.length === 0;
 
   console.log(`[status] cursor  ${cursorOk ? "ok" : "INCOMPLETE"}  ${CURSOR_FILE}`);
   if (!cursorOk) console.log(`         missing: ${cursorMissing.join(", ")}`);
@@ -140,8 +193,10 @@ function statusReport() {
   );
   if (!zcodeEnabled) console.log("         hooks.enabled is not true");
   if (!zcodeOk) console.log(`         missing: ${zcodeMissing.join(", ")}`);
+  console.log(`[status] claude  ${claudeOk ? "ok" : "INCOMPLETE"}  ${CLAUDE_FILE}`);
+  if (!claudeOk) console.log(`         missing: ${claudeMissing.join(", ")}`);
 
-  return cursorOk && zcodeOk && zcodeEnabled;
+  return cursorOk && zcodeOk && zcodeEnabled && claudeOk;
 }
 
 function usage() {
@@ -170,8 +225,9 @@ function main() {
   }
   installCursor();
   installZcode();
+  installClaude();
   statusReport();
-  console.log("hooks installed. Restart Cursor / ZCode sessions so they reload.");
+  console.log("hooks installed. Restart Cursor / ZCode / Claude Code sessions so they reload.");
   console.log("Keep `cd server && npm start` running so POST /api/event can land.");
 }
 

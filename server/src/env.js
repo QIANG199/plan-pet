@@ -15,6 +15,8 @@ module.exports = {
   zaiApiBase: process.env.ZAI_API_BASE || "https://api.z.ai",
   /* OTA 固件路径：默认用 ota.js 里的 pio 构建产物路径，OTA_BIN 可覆盖 */
   otaBinPath: process.env.OTA_BIN || "",
+  /* OpenCode Go 套餐是可选第三份额度：缺 key 时该计划页显示 fail，服务照跑 */
+  opencodeGoKey: process.env.OPENCODE_GO_KEY || "",
   panelToken: required("PANEL_TOKEN"),
   host: process.env.HOST || "0.0.0.0",
   port: Number(process.env.PORT || 3737),

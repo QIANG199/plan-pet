@@ -1,20 +1,23 @@
 # PlanPet
 
-一块放在书桌上的 ESP32 触摸屏：左边显示 **GLM Coding Plan** 和 **Cursor Pro** 的已用额度，右边一只 clawd 桌宠跟着 Cursor / ZCode 的编码事件换表情。
+一块放在书桌上的 ESP32 触摸屏：额度卡上**上下滑动**翻到第二页看 **Open Code**（OpenCode Go 套餐，屏显更名）额度（第一页是 **GLM Coding Plan** 与 **Cursor Pro**），右边一只 clawd 桌宠跟着 Cursor / ZCode / Claude Code 的编码事件换表情（opencode 最近在用时也会兜底动起来）。
 
-桌宠贴图来自开源项目 **[Clawd on Desk](https://github.com/rullerzhou-afk/clawd-on-desk)**（GIF 不进本仓库，见 [致谢](docs/credits.md)）。
+桌宠贴图来自开源项目 **[Clawd on Desk](https://github.com/rullerzhou-afk/clawd-on-desk)**（GIF 不入 Git：`assets/gif/` 为 gitignore 的本地副本，见 [致谢](docs/credits.md)）。
 
 GitHub：[QIANG199/plan-pet](https://github.com/QIANG199/plan-pet)（源码 [Apache-2.0](LICENSE)）。面板直连电脑 IP 访问中转服务（配网页 `/setup`、串口 `HOST` 或触屏设置页写入）；mDNS 发现已移除——目标局域网组播不通，DHCP 换 IP 后重设 HOST 即可。
 
-电脑上跑一个很小的 **中转服务**，面板只负责显示。Cursor 登录态和 Z.ai Key 都留在电脑里，不进固件。
+电脑上跑一个很小的 **中转服务**，面板只负责显示。Cursor 登录态、Z.ai Key 与 OpenCode Go Key 都留在电脑里，不进固件。
 
 ## 能做什么
 
 - 屏上 GLM：`5h` / `7d` 已用百分比 + 倒计时
 - 屏上 Cursor：`composer & grok` / `other` 已用百分比 + 账期倒计时
+- 屏上 Open Code（第 2 页，上下滑动翻过去）：`5h` / `week` / `month` 已用百分比 + 倒计时；opencode 最近有会话活动（服务端查会话库写入，5 分钟窗口）时标题旁绿点呼吸闪烁（不是 hooks）
+- 额度卡分两页：**第 1 页 GLM + CURSOR（老样子，各占半张卡）**，第 2 页 Open Code；卡上**上下滑动翻页**（竖向滑 26px 以上才算，轻点不翻），卡右下角两个页点指示当前页，页码不落盘（重启回第 1 页）
 - 进度条按**已用**变色：低于 70% 绿，70%–90% 橙，不低于 90% 红
 - 桌宠 6 态：`idle` / `thinking` / `typing` / `happy` / `error` / `sleeping`（idle 不是睡觉；sleeping 约 15 分钟无事件才进入）
-- 绿点按应用独立亮（Cursor 与 ZCode 可同时亮）；两边都在忙时，动画跟 GLM
+- 桌宠跟随的代理有三个 hooks lane：**Cursor、ZCode、Claude Code**——各自一条 lane 互不干扰，同时忙时动画按 zcode → Claude Code → Cursor 定胜负；opencode 不是 hooks（没有适配器），只在它最近有会话活动且桌宠空闲时以 typing 兜底
+- 绿点按应用独立亮（Cursor 与 ZCode 可同时亮，Open Code 页跟会话活动）；Claude Code 没有属于自己的额度卡（它是各套餐的客户端），所以只驱动桌宠、不点绿点
 - 点时间下方空白切换深/浅主题；点桌宠播放 poke
 - **BOOT 键**：短按换深/浅主题，双击进**设置页**（触屏配网：选 WiFi、输密码、改主机/端口/令牌），长按 5 秒松手重启
 - **PWR 键**：长按约 3 秒触发**关机倒计时**（左侧卡片先出现圆形进度环，满圈后 3·2·1 倒计时，期间再按一次 PWR 取消），走完才断电黑屏；USB 插着永不关机
@@ -27,7 +30,7 @@ GitHub：[QIANG199/plan-pet](https://github.com/QIANG199/plan-pet)（源码 [Apa
 
 ```
  电脑（中转服务 :3737，面板直连其局域网 IP）
-   GLM API + Cursor 账单 + hooks 事件
+   GLM API + Cursor 账单 + OpenCode Go usage + hooks 事件
                     ↓  每 1 秒 GET /api/dashboard
  额度面板（ESP32，只渲染快照）
 ```
@@ -50,9 +53,14 @@ PORT=3737
 
 # 可选：GLM 套餐区域。默认国际版 api.z.ai；用国内 bigmodel 编码套餐时改成：
 # ZAI_API_BASE=https://open.bigmodel.cn
+
+# 可选：OpenCode Go 套餐 key（$10/月订阅）。留空则面板第 2 页显示 fail
+OPENCODE_GO_KEY=sk-...
 ```
 
-`PANEL_TOKEN` 是面板和中转服务之间的共享口令，**不是** Z.ai Key，也不是 Cursor 登录态。
+`PANEL_TOKEN` 是面板和中转服务之间的共享口令，**不是** Z.ai Key，也不是 Cursor 登录态，更不是 OpenCode Go 的 key。
+
+`OPENCODE_GO_KEY` 取自 opencode 的 workspace key：cc-switch 里 “OpenCode Go” 提供商的 `ANTHROPIC_AUTH_TOKEN`，或本机 `~/.local/share/opencode/auth.json` 的 `opencode-go`。注意用量接口只认 `Authorization: Bearer`（推理侧 `/messages` 用的是 `x-api-key`，两者不能互换）；返回 HTTP 403 说明这把 key 的 workspace 没有 Go 订阅，不是 key 写错了。
 
 ```bat
 cd server
@@ -90,13 +98,13 @@ server\scripts\install-startup.cmd
 
 ### 4. 桌宠跟着编码走
 
-追加安装，**不会覆盖**你已有的 clawd 钩子。Cursor 大版本更新有时会清空 `~/.cursor/hooks.json`，重跑即可：
+追加安装，**不会覆盖**你已有的钩子（Cursor 的 clawd 钩子、Claude Code 的 ccstatusline / codegraph 都不动）。写入三处用户级配置：`~/.cursor/hooks.json`、`~/.zcode/cli/config.json`、`~/.claude/settings.json`。Cursor 大版本更新有时会清空 `~/.cursor/hooks.json`，重跑即可：
 
 ```bat
 hooks\install.cmd
 ```
 
-或 `node hooks/install.js` / `cd server && npm run hooks:install`。查是否齐全：`node hooks/install.js status`。装完后**新开 Agent 对话**（或重启 Cursor），编码时桌宠应切换 thinking / typing 等。
+或 `node hooks/install.js` / `cd server && npm run hooks:install`。查是否齐全：`node hooks/install.js status`。装完后**新开 Agent 对话**（或重启 Cursor / Claude Code），编码时桌宠应切换 thinking / typing 等。
 
 ### 5. 面板日常
 
@@ -142,7 +150,7 @@ PET idle|thinking|typing|happy|error|sleeping|auto
 |---|---|
 | 开发板 | 微雪 ESP32-S3-Touch-LCD-3.49 A 款（建议带电池） |
 | 微雪 Arduino Demo | 本机要有 LVGL 9 目录，固件用目录联接，**不进 Git** |
-| clawd GIF | 来自 [Clawd on Desk](https://github.com/rullerzhou-afk/clawd-on-desk) 的 `assets/gif/`。默认本机路径 `D:\develop\clawd-on-desk\assets\gif`，可设环境变量 `CLAWD_GIF_DIR` |
+| clawd GIF | 来自 [Clawd on Desk](https://github.com/rullerzhou-afk/clawd-on-desk) 的 `assets/gif/`。默认本仓库 `assets\gif\`（gitignore 的本地副本），可设环境变量 `CLAWD_GIF_DIR` |
 | 软件 | Node.js ≥ 18、Python 3 + Pillow、PlatformIO Core、Git |
 | 账号 | Z.ai Coding Plan 的 API Key；本机已登录 Cursor Pro（读 `%APPDATA%\Cursor\User\globalStorage\state.vscdb`） |
 
@@ -204,7 +212,7 @@ python firmware\tools\bake_pet.py
 GIF 不在默认盘符时：
 
 ```bat
-set CLAWD_GIF_DIR=C:\path\to\clawd-on-desk\assets\gif
+set CLAWD_GIF_DIR=C:\path\to\gif
 python firmware\tools\bake_pet.py
 ```
 
@@ -238,7 +246,7 @@ Cursor 更新后桌宠不跟手时，先跑上面这条（或 `node hooks/instal
 |---|---|
 | `server/` | 中转服务（Node 标准库 + `serialport`；`src/lib/` 为与 hooks 共享的事件表/工具，`tests/` 为单测 `npm test`） |
 | `firmware/` | 额度面板固件（PlatformIO + Arduino + LVGL 9），纯显示；`src/ui/` 界面、`src/bsp/` 板级驱动、`tools/` 烤帧脚本 |
-| `hooks/` | Cursor / ZCode 适配器；`install.js` / `install.cmd` 只追加，可重复跑 |
+| `hooks/` | Cursor / ZCode / Claude Code 适配器；`install.js` / `install.cmd` 只追加，可重复跑 |
 | `docs/` | 设计方案、1:1 设计稿（桌面 + 设置页）、领域词汇 |
 
 改行为前先读 [CONTEXT.md](CONTEXT.md)（术语）和 [docs/design/01-设计方案.md](docs/design/01-设计方案.md)（API、状态机、ADR）。
@@ -268,4 +276,4 @@ COM 被串口监视器占用，先关掉再 upload。
 
 PlanPet 的桌宠形象、屏幕驱动、UI 库等都站在别人的项目上。**贴图版权不属于本仓库**，请先读 [docs/credits.md](docs/credits.md)。
 
-最重要的一条：clawd GIF 来自 **[Clawd on Desk](https://github.com/rullerzhou-afk/clawd-on-desk)**。其程序源码为 AGPL-3.0；[assets/LICENSE](https://github.com/rullerzhou-afk/clawd-on-desk/blob/main/assets/LICENSE) 声明贴图 All Rights Reserved（Clawd 形象属 Anthropic，像素稿为同人、不得商用）。本仓库不拷贝这些 GIF，只在你本机烤帧。hooks 是自写的，不复用 clawd 的 `cursor-hook.js`。
+最重要的一条：clawd GIF 来自 **[Clawd on Desk](https://github.com/rullerzhou-afk/clawd-on-desk)**。其程序源码为 AGPL-3.0；[assets/LICENSE](https://github.com/rullerzhou-afk/clawd-on-desk/blob/main/assets/LICENSE) 声明贴图 All Rights Reserved（Clawd 形象属 Anthropic，像素稿为同人、不得商用）。这些 GIF 不入 Git（`assets/gif/` 已 gitignore），只在你本机烤帧。hooks 是自写的，不复用 clawd 的 `cursor-hook.js`。

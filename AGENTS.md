@@ -1,18 +1,18 @@
 # AGENTS.md
 
-PlanPet：ESP32 桌面额度面板 + 桌宠。一块微雪 ESP32-S3 触摸屏实时显示 GLM / Cursor 编码套餐额度，右侧 clawd 桌宠随 Cursor/ZCode 编码事件切换 6 种状态。上手与日常使用见根目录 `README.md`。改代码前先读 `CONTEXT.md`（领域词汇表，术语与已否决说法的权威来源）和 `docs/design/01-设计方案.md`（API 契约 §5、状态机 §6、ADR §9）。
+PlanPet：ESP32 桌面额度面板 + 桌宠。一块微雪 ESP32-S3 触摸屏实时显示 GLM / Cursor / OpenCode Go 编码套餐额度（额度卡上下滑动翻页），右侧 clawd 桌宠随 Cursor/ZCode 编码事件切换 6 种状态。上手与日常使用见根目录 `README.md`。改代码前先读 `CONTEXT.md`（领域词汇表，术语与已否决说法的权威来源）和 `docs/design/01-设计方案.md`（API 契约 §5、状态机 §6、ADR §9）。
 
 ## 目录与职责
 
-- `server/` — 中转服务（Node.js ≥18，CommonJS，无构建/无 lint）。拉取 GLM 与 Cursor 额度、接收 hooks 上报、维护桌宠状态机，供面板轮询。监听 `0.0.0.0:3737`。`src/lib/` 是与 hooks 共享的模块（事件表、.env 解析、时间工具），`src/panel-link.js` 是 USB 串口桥（Web 配网页 `GET /setup` → `POST /api/panel/setup`），`tests/` 是单测（`npm test`）。依赖仅 `serialport`。
-- `firmware/` — 额度面板固件（PlatformIO + Arduino + LVGL 9）。**纯显示端**，只渲染中转服务快照，不承担业务逻辑；微雪 3.49 寸屏物理 172×640，横屏用 640×172。`src/ui/` 界面层（桌面 + 触屏设置页），`src/bsp/` 板级驱动（含 vendor 的 axs15231b/、touch/，二者保持同层相对引用），`tools/` 烤帧脚本（GIF 源默认 `D:\develop\clawd-on-desk\assets\gif`，可用 `CLAWD_GIF_DIR` 覆盖）。
-- `hooks/` — Cursor / ZCode 事件适配器（`common.js` 共享上报逻辑，`install.js` / `install.cmd` 安装修复）。安装是**追加**，不得覆盖用户已有的 clawd 钩子；也禁止原样复用 clawd 的 cursor-hook.js。**目录位置不能动**——用户机器上已安装的钩子配置以绝对路径引用这里。
-- `docs/` — 设计文档与 1:1 屏幕设计稿（桌面 `screen-layout.html` v11、设置页 `settings-layout.html`）。
+- `server/` — 中转服务（Node.js ≥18，CommonJS，无构建/无 lint）。职责：汇总三份编码套餐额度、接收 hooks 上报、维护桌宠状态机，供面板轮询。监听 `0.0.0.0:3737`。`src/lib/` 是与 hooks 共享的模块（事件表、时间工具、配置解析），`src/panel-link.js` 是 USB 串口桥（Web 配网页 `GET /setup` → `POST /api/panel/setup`），`tests/` 是单测（`npm test`）。依赖仅 `serialport`。
+- `firmware/` — 额度面板固件（PlatformIO + Arduino + LVGL 9）。**纯显示端**，只渲染中转服务快照，不承担业务逻辑；微雪 3.49 寸屏物理 172×640，横屏用 640×172。`src/ui/` 界面层（桌面：两页额度卡 + 桌宠 + 触屏设置页），`src/bsp/` 板级驱动（含 vendor 的 axs15231b/、touch/，二者保持同层相对引用），`tools/` 烤帧脚本（GIF 源默认本仓库 `assets\gif\`——gitignore 的本地副本，可用 `CLAWD_GIF_DIR` 覆盖）。
+- `hooks/` — Cursor / ZCode / Claude Code 事件适配器（`common.js` 共享上报逻辑，`install.js` / `install.cmd` 往三处用户级配置追加：`~/.cursor/hooks.json`、`~/.zcode/cli/config.json`、`~/.claude/settings.json`）。安装是**追加**，不得覆盖用户已有的钩子（clawd 的 cursor-hook.js、ccstatusline、codegraph 都别动）；也禁止原样复用 clawd 的 cursor-hook.js。**目录位置不能动**——用户机器上已安装的钩子配置以绝对路径引用这里。
+- `docs/` — 设计文档与 1:1 屏幕设计稿（桌面 `screen-layout.html` v13、设置页 `settings-layout.html`）。
 
 ## 常用命令
 
 ```bash
-# 中转服务（.env 在仓库根目录，含 ZAI_API_KEY / PANEL_TOKEN / PORT）
+# 中转服务（.env 在仓库根目录，含 ZAI_API_KEY / OPENCODE_GO_KEY / PANEL_TOKEN / PORT）
 cd server && npm start
 npm test                      # node --test 单测
 
@@ -37,8 +37,13 @@ python firmware/tools/bake_pet.py
 - 面板直连显式配置的 PC IP 访问中转服务（串口 `HOST` / 触屏设置页写 NVS）。mDNS 发现已移除（目标局域网组播不通 + 逐次解析阻塞轮询，2026-08 否决）；把 IP 编译进固件仍然禁止。DHCP 换 IP 后需重设 HOST。
 - GLM 的 5h / 周窗口都读 `TOKENS_LIMIT`；`TIME_LIMIT` 是 MCP 月度，面板不做。
 - GLM 高峰时段：北京时间每天 14–18 点用量按 3 倍计。窗口判断在服务端（`glm.peak`，响应时点算），固件只在 GLM 标题后渲染「• 3x」（3x 用进度条橙），不自己算时区。
-- 令牌语义严格区分：`PANEL_TOKEN` 是面板↔中转服务的共享口令；Z.ai Key 和 Cursor 登录态是另外的东西，文档里别混称 API Key。
-- hooks 事件名唯一权威在 `server/src/lib/events.js`（pet.js、两个适配器、install.js 都从这取）；桌宠状态名同时是固件 `ui/ui_pet.cpp` 与 `firmware/tools/bake_pet.py` 的跨语言契约。
+- OpenCode Go：第三份额度，取数实现在 `server/src/opencode.js`——端点、响应字段与逐窗口解析口径见 `docs/data-sources.html` Section 04 与设计方案 §4.6，改之前先读那两处。它是套餐不是 hooks 代理：不产生 thinking / happy 这类事件。2026-09 起有「运行时在场」（`server/src/opencode-runtime.js` 每 5 秒查 OpenCode 会话库 `~/.local/share/opencode/opencode.db` 及 `-wal`，最近 5 分钟内写过即算在用；桌面版是 Electron 常驻应用，进程/窗口在 ≠ 在用，只有会话活动才写库，桌面版与 TUI 共用同一库）：opencode 最近有会话活动 → 第 2 页（屏显 `OPEN CODE`，快照键 `opencodeGo` 与 env 键 `OPENCODE_GO_KEY` 不改）呼吸灯亮、桌宠 idle 时兜底 typing（`pet.js` 的 `withRuntime`）；不喂 15 分钟睡眠计时，息屏节奏不变。
+- 令牌语义严格区分：`PANEL_TOKEN` 是面板↔中转服务的共享口令；Z.ai / OpenCode Go 的凭据、Cursor 登录态是另外三样东西，文档里别混称 API Key。
+- 上面四样都只在本机由中转服务自己使用：不读取、不打印、不复制、不提交、不转发；要确认配置是否就位，看服务启动日志与 `.env.example` 里的键名就够了。
+- OTA 可**指令推**：`POST /api/ota/push` 置位 → 快照 `ota.forceAt` → 面板下次轮询（醒着时约 1 秒）即下载；`/api/ota/bin` 被取走即清零，一次置位只对应一次下载。别把它改成「构建落盘就自动推」，6 小时自检与串口 `OTA` 保留为兜底。契约见设计方案 §5.4。
+- 额度卡**只有两页**：第 1 页 GLM + CURSOR（老布局，各占半张卡），第 2 页 OpenCode Go（3 个窗口行半张卡放不下）。卡上上下滑动翻页（竖向 ≥26px，轻点不翻），右下角页点指示当前页；别再拆成三页。
+- hooks 事件名唯一权威在 `server/src/lib/events.js`（pet.js、三个适配器、install.js 都从这取）；桌宠状态名同时是固件 `ui/ui_pet.cpp` 与 `firmware/tools/bake_pet.py` 的跨语言契约。
+- 桌宠三条 lane：`zcode` / `claude` / `cursor`，各自独立；同时 busy 时动画按 zcode → claude → cursor 定胜负（`server/src/pet.js` 的 `SOURCES`，顺序即优先级）。Claude Code 是**代理**不是额度来源，没有额度卡，故只驱动桌宠、屏上不点绿点。契约见设计方案 §4.5/§5.2/§6。
 
 ## 固件注意事项（硬件硬规则）
 

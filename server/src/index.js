@@ -5,15 +5,23 @@ const { execFile } = require("child_process");
 const env = require("./env");
 const { fetchQuota, isPeakNow } = require("./glm");
 const { fetchQuota: fetchCursorQuota } = require("./cursor");
-const { createPet } = require("./pet");
-const { otaInfo, otaBinPath } = require("./ota");
+const { fetchQuota: fetchOpenCodeQuota } = require("./opencode");
+const { createRuntimeWatch } = require("./opencode-runtime");
+const { createPet, withRuntime } = require("./pet");
+const { otaInfo, otaBinPath, armPush, clearPush, pushState } = require("./ota");
 const { panelRoundtrip, listCandidates } = require("./panel-link");
 const { EVENT_SET } = require("./lib/events");
 
 const pet = createPet();
+const ocRuntime = createRuntimeWatch();
+
+function petView() {
+  return withRuntime(pet.snapshot(), ocRuntime.running());
+}
 const cache = {
   glm: { ok: false },
   cursor: { ok: false },
+  opencodeGo: { ok: false },
 };
 
 function json(res, status, body) {
@@ -42,7 +50,10 @@ function dashboard() {
     cursor: cache.cursor,
     /* peak 在响应时点算，不受 5 分钟刷新间隔影响，14/18 点边界即时翻转 */
     glm: { ...cache.glm, peak: isPeakNow() },
-    pet: pet.snapshot(),
+    opencodeGo: cache.opencodeGo,
+    /* 指令推：非 null 时面板下一次轮询（约 1 秒）就开始下载固件 */
+    ota: { forceAt: pushState() },
+    pet: petView(),
   };
 }
 
@@ -66,6 +77,24 @@ async function refreshCursor() {
   } catch (err) {
     cache.cursor = { ok: false };
     console.error("[cursor] fail", err.message);
+  }
+}
+
+async function refreshOpenCode() {
+  if (!env.opencodeGoKey) {
+    cache.opencodeGo = { ok: false };
+    return;
+  }
+  try {
+    cache.opencodeGo = await fetchOpenCodeQuota(env.opencodeGoKey);
+    const week = cache.opencodeGo.week ? `${cache.opencodeGo.week.pct}%` : "none";
+    const month = cache.opencodeGo.month ? `${cache.opencodeGo.month.pct}%` : "none";
+    console.log(
+      `[opencode] ok  5h=${cache.opencodeGo.h5 ? cache.opencodeGo.h5.pct : "none"}%  week=${week}  month=${month}`
+    );
+  } catch (err) {
+    cache.opencodeGo = { ok: false };
+    console.error("[opencode] fail", err.message);
   }
 }
 
@@ -160,7 +189,25 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === "GET" && url.pathname === "/api/ota/info") {
     const info = otaInfo();
+    /* 面板的自检（开机 +2min、每 6h、收到指令推）都打这；调推时看这一行即可
+     * 确认设备真的来问了 */
+    console.log(
+      `[ota] info asked by ${req.socket.remoteAddress} -> ${info.ok ? "build " + info.build : "not built"}`
+    );
     json(res, info.ok ? 200 : 404, info);
+    return;
+  }
+
+  /* 指令推：置位后由快照带给面板（面板不在线/息屏时保持置位，等它下次醒来） */
+  if (req.method === "POST" && url.pathname === "/api/ota/push") {
+    const info = otaInfo();
+    if (!info.ok) {
+      json(res, 404, { ok: false, error: "firmware.bin not built" });
+      return;
+    }
+    const forceAt = armPush();
+    console.log(`[ota] push armed build=${info.build} size=${info.size}`);
+    json(res, 200, { ok: true, forceAt, build: info.build, size: info.size });
     return;
   }
 
@@ -176,6 +223,8 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       console.log(`[ota] serve build=${info.build} ${data.length}B`);
+      /* 取走即清零：一次置位只对应一次下载，面板重启后不会重复触发 */
+      clearPush();
       res.writeHead(200, {
         "Content-Type": "application/octet-stream",
         "Content-Length": data.length,
@@ -204,7 +253,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     pet.apply(body);
-    json(res, 200, { ok: true, pet: pet.snapshot() });
+    json(res, 200, { ok: true, pet: petView() });
     return;
   }
 
@@ -249,12 +298,22 @@ server.on("error", (err) => {
   throw err;
 });
 
-server.listen(env.port, env.host, async () => {
+server.listen(env.port, env.host, () => {
   console.log(`[listen] http://${env.host}:${env.port}`);
   console.log("[token] X-Panel-Token is set (see .env). Do not commit .env.");
   tryFirewall();
-  await refreshGlm();
-  await refreshCursor();
+  /* 三份额度互不依赖：一个来源慢/挂不能拖着另外两个的首拉 */
+  refreshGlm();
+  refreshCursor();
+  if (!env.opencodeGoKey) {
+    console.log(
+      "[opencode] OPENCODE_GO_KEY unset in .env; the Open Code page will show fail"
+    );
+  } else {
+    refreshOpenCode();
+  }
+  ocRuntime.start();
   setInterval(refreshGlm, 5 * 60 * 1000).unref();
   setInterval(refreshCursor, 5 * 60 * 1000).unref();
+  setInterval(refreshOpenCode, 5 * 60 * 1000).unref();
 });

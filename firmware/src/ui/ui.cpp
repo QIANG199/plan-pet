@@ -17,16 +17,63 @@ lv_obj_t *glmK2, *glmR2, *glmP2, *glmBar2;
 static lv_obj_t *glmPeak; /* 「• 3x」peak-pricing badge, shown after GLM */
 lv_obj_t *curTitle, *curDot, *curReset;
 lv_obj_t *curK1, *curP1, *curBar1, *curK2, *curP2, *curBar2;
+lv_obj_t *ocTitle, *ocDot, *ocK1, *ocR1, *ocP1, *ocBar1;
+lv_obj_t *ocK2, *ocR2, *ocP2, *ocBar2;
+lv_obj_t *ocK3, *ocR3, *ocP3, *ocBar3;
 static lv_obj_t *ovlCap, *ovlBig, *ovlRing;
 static lv_obj_t *setupHint;
 static lv_obj_t *otaLbl; /* "UPD x%" progress line in the reserved mid slot */
 static bool hintShown;
+
+/* 额度卡分两页：第 1 页沿用老布局（GLM + CURSOR 两块同页各占半张卡），
+ * 第 2 页是 OPEN CODE（OpenCode Go 套餐）——它有 3 个窗口行，半张卡装不下。
+ * 上下滑动翻页。 */
+static const int PLAN_PAGES = 2;
+static const lv_coord_t PLAN_SWIPE_MIN = 26; /* 竖向滑动超过这么多像素才算翻页，轻点不翻 */
+
+static lv_obj_t *planPages[PLAN_PAGES];
+static lv_obj_t *planDots[PLAN_PAGES];
+static lv_obj_t *planHit; /* 盖住整张卡的透明热区，滑动只认它 */
+static int planPage;
+static lv_coord_t planTouchY;
 
 static bool wifiOn = true;
 static bool srvOn = true;
 static bool uiAsleep = false;
 static lv_obj_t *sleepScr;
 static bool glmPeakOn = false;
+
+static void plan_show(int idx) {
+  if (idx < 0) idx = 0;
+  if (idx >= PLAN_PAGES) idx = PLAN_PAGES - 1;
+  planPage = idx;
+  for (int i = 0; i < PLAN_PAGES; i++) {
+    if (i == idx) lv_obj_clear_flag(planPages[i], LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(planPages[i], LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_style_bg_color(planDots[i],
+                              i == idx ? ui_palette().ink2 : ui_palette().track, 0);
+  }
+}
+
+static void onPlanPressed(lv_event_t *e) {
+  LV_UNUSED(e);
+  lv_indev_t *indev = lv_indev_active();
+  lv_point_t p;
+  if (!indev) return;
+  lv_indev_get_point(indev, &p);
+  planTouchY = p.y;
+}
+
+static void onPlanReleased(lv_event_t *e) {
+  LV_UNUSED(e);
+  lv_indev_t *indev = lv_indev_active();
+  lv_point_t p;
+  if (!indev) return;
+  lv_indev_get_point(indev, &p);
+  lv_coord_t dy = p.y - planTouchY;
+  if (dy <= -PLAN_SWIPE_MIN) plan_show(planPage + 1); /* 上滑 = 下一页 */
+  else if (dy >= PLAN_SWIPE_MIN) plan_show(planPage - 1); /* 下滑 = 上一页 */
+}
 
 /* Peak-pricing badge "• 3x": bullet takes the theme ink via the label style,
  * only "3x" is hard-colored to UI_WARN (#f0805a) through label recolor. */
@@ -76,15 +123,29 @@ static void applyTheme() {
   lv_obj_set_style_text_color(glmP2, p.ink, 0);
   lv_obj_set_style_text_color(curP1, p.ink, 0);
   lv_obj_set_style_text_color(curP2, p.ink, 0);
+  lv_obj_set_style_text_color(ocTitle, p.ink, 0);
+  lv_obj_set_style_text_color(ocK1, p.ink2, 0);
+  lv_obj_set_style_text_color(ocK2, p.ink2, 0);
+  lv_obj_set_style_text_color(ocK3, p.ink2, 0);
+  lv_obj_set_style_text_color(ocR1, p.ink2, 0);
+  lv_obj_set_style_text_color(ocR2, p.ink2, 0);
+  lv_obj_set_style_text_color(ocR3, p.ink2, 0);
+  lv_obj_set_style_text_color(ocP1, p.ink, 0);
+  lv_obj_set_style_text_color(ocP2, p.ink, 0);
+  lv_obj_set_style_text_color(ocP3, p.ink, 0);
   lv_obj_set_style_bg_color(glmBar1, p.track, LV_PART_MAIN);
   lv_obj_set_style_bg_color(glmBar2, p.track, LV_PART_MAIN);
   lv_obj_set_style_bg_color(curBar1, p.track, LV_PART_MAIN);
   lv_obj_set_style_bg_color(curBar2, p.track, LV_PART_MAIN);
+  lv_obj_set_style_bg_color(ocBar1, p.track, LV_PART_MAIN);
+  lv_obj_set_style_bg_color(ocBar2, p.track, LV_PART_MAIN);
+  lv_obj_set_style_bg_color(ocBar3, p.track, LV_PART_MAIN);
   lv_obj_set_style_text_color(ovlCap, p.ink2, 0);
   lv_obj_set_style_text_color(otaLbl, p.ink2, 0);
   lv_obj_set_style_arc_color(ovlRing, p.track, LV_PART_MAIN);
   lv_obj_set_style_text_color(setupHint, p.ink2, 0);
   if (glmPeakOn) drawGlmPeak(); /* theme flip: rebuild recolor positions/colors */
+  plan_show(planPage); /* 页点：当前页 ink2，其余 track */
   ui_pet_show_frame();
   ui_set_link(wifiOn, srvOn);
 }
@@ -245,7 +306,11 @@ void ui_create() {
   lv_obj_set_flex_flow(planCard, LV_FLEX_FLOW_COLUMN);
   lv_obj_set_style_pad_row(planCard, 4, 0);
 
-  lv_obj_t *glmBlock = ui_mk_block(planCard);
+  /* 第 1 页：GLM + CURSOR 两块同页，各占半张卡（加第三份额度之前的样子） */
+  lv_obj_t *page1 = planPages[0] = ui_mk_block(planCard);
+  lv_obj_set_style_pad_row(page1, 4, 0); /* 两块之间的间距，与旧版 planCard 一致 */
+
+  lv_obj_t *glmBlock = ui_mk_block(page1);
   lv_obj_t *glmHead = ui_mk_head(glmBlock);
   glmTitle = ui_mk_lbl(glmHead, &lv_font_montserrat_12, lv_color_white());
   lv_label_set_text(glmTitle, "GLM");
@@ -261,7 +326,7 @@ void ui_create() {
   lv_label_set_text(glmK2, "7d");
   glmBar2 = ui_mk_bar(glmBlock);
 
-  lv_obj_t *curBlock = ui_mk_block(planCard);
+  lv_obj_t *curBlock = ui_mk_block(page1);
   lv_obj_t *curHead = ui_mk_head(curBlock);
   curTitle = ui_mk_lbl(curHead, &lv_font_montserrat_12, lv_color_white());
   lv_label_set_text(curTitle, "CURSOR");
@@ -279,6 +344,56 @@ void ui_create() {
   ui_mk_row(curBlock, &curK2, &curResetDummy2, &curP2);
   lv_label_set_text(curK2, "other");
   curBar2 = ui_mk_bar(curBlock);
+
+  /* 第 2 页：OpenCode Go（美元额度 5h / 周 / 月三个窗口，半张卡装不下）。
+   * 绿点是运行时在场：服务端扫到本机 opencode 进程在跑就亮，不是 hooks 事件。
+   * 头部用 flex 行，圆点自然贴在标题后（建页时该页隐藏，量宽度不可靠）。 */
+  lv_obj_t *page2 = planPages[1] = ui_mk_block(planCard);
+  lv_obj_t *ocBlock = ui_mk_block(page2);
+  lv_obj_t *ocHead = ui_mk_head(ocBlock);
+  lv_obj_set_flex_flow(ocHead, LV_FLEX_FLOW_ROW);
+  lv_obj_set_flex_align(ocHead, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
+                        LV_FLEX_ALIGN_START);
+  lv_obj_set_style_pad_column(ocHead, 5, 0);
+  ocTitle = ui_mk_lbl(ocHead, &lv_font_montserrat_12, lv_color_white());
+  lv_label_set_text(ocTitle, "OPEN CODE");
+  ocDot = ui_mk_dot(ocHead);
+
+  ui_mk_row(ocBlock, &ocK1, &ocR1, &ocP1);
+  lv_label_set_text(ocK1, "5h");
+  ocBar1 = ui_mk_bar(ocBlock);
+  ui_mk_row(ocBlock, &ocK2, &ocR2, &ocP2);
+  lv_label_set_text(ocK2, "week");
+  ocBar2 = ui_mk_bar(ocBlock);
+  ui_mk_row(ocBlock, &ocK3, &ocR3, &ocP3);
+  lv_label_set_text(ocK3, "month");
+  ocBar3 = ui_mk_bar(ocBlock);
+
+  /* 页点（卡右下角）与滑动热区都不参与卡的 flex 排布 */
+  for (int i = 0; i < PLAN_PAGES; i++) {
+    lv_obj_t *d = lv_obj_create(planCard);
+    ui_no_scroll(d);
+    lv_obj_set_size(d, 5, 5);
+    lv_obj_set_style_radius(d, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_border_width(d, 0, 0);
+    lv_obj_set_style_bg_opa(d, LV_OPA_COVER, 0);
+    lv_obj_add_flag(d, LV_OBJ_FLAG_IGNORE_LAYOUT);
+    lv_obj_align(d, LV_ALIGN_BOTTOM_RIGHT, -(PLAN_PAGES - 1 - i) * 9, -1); /* 左起 = 第 1 页 */
+    planDots[i] = d;
+  }
+
+  /* 透明热区盖满整张卡接滑动：页内标签/容器都不 clickable，落点必是它 */
+  planHit = lv_obj_create(planCard);
+  ui_no_scroll(planHit);
+  lv_obj_set_size(planHit, 372, 160); /* 绝对尺寸，不受卡 padding 收窄 */
+  lv_obj_center(planHit);
+  lv_obj_add_flag(planHit, LV_OBJ_FLAG_IGNORE_LAYOUT);
+  lv_obj_add_flag(planHit, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_set_style_bg_opa(planHit, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_border_width(planHit, 0, 0);
+  lv_obj_add_event_cb(planHit, onPlanPressed, LV_EVENT_PRESSED, nullptr);
+  lv_obj_add_event_cb(planHit, onPlanReleased, LV_EVENT_RELEASED, nullptr);
+  plan_show(0);
 
   petZone = lv_obj_create(uiScr);
   lv_obj_set_pos(petZone, 474, 6);
@@ -317,6 +432,11 @@ static void setBar(lv_obj_t *bar, lv_obj_t *pctLbl, lv_obj_t *resetLbl, const Qu
   }
 }
 
+static void showBar(lv_obj_t *bar, bool present) {
+  if (present) lv_obj_clear_flag(bar, LV_OBJ_FLAG_HIDDEN);
+  else lv_obj_add_flag(bar, LV_OBJ_FLAG_HIDDEN);
+}
+
 void ui_apply(const Snapshot &s) {
   if (uiAsleep) return; /* no redraws while the backlight is off */
   ui_set_glm_peak(s.glmPeak);
@@ -332,10 +452,20 @@ void ui_apply(const Snapshot &s) {
   remainText(s.cycleEnd, cyc, sizeof(cyc));
   lv_label_set_text(curReset, s.cursorOk ? cyc : "");
 
+  setBar(ocBar1, ocP1, ocR1, s.ocH5, !s.ocOk);
+  setBar(ocBar2, ocP2, ocR2, s.ocWeek, !s.ocOk);
+  setBar(ocBar3, ocP3, ocR3, s.ocMonth, !s.ocOk);
+  /* 窗口缺失（或整份额度失败）时收掉进度条，只留 `--` */
+  showBar(ocBar1, s.ocOk && s.ocH5.present);
+  showBar(ocBar2, s.ocOk && s.ocWeek.present);
+  showBar(ocBar3, s.ocOk && s.ocMonth.present);
+
   if (s.glmDot) lv_obj_clear_flag(glmDot, LV_OBJ_FLAG_HIDDEN);
   else lv_obj_add_flag(glmDot, LV_OBJ_FLAG_HIDDEN);
   if (s.curDot) lv_obj_clear_flag(curDot, LV_OBJ_FLAG_HIDDEN);
   else lv_obj_add_flag(curDot, LV_OBJ_FLAG_HIDDEN);
+  if (s.ocDot) lv_obj_clear_flag(ocDot, LV_OBJ_FLAG_HIDDEN);
+  else lv_obj_add_flag(ocDot, LV_OBJ_FLAG_HIDDEN);
 
   if (s.petState.length()) ui_pet_set_follow(s.petState.c_str());
 }

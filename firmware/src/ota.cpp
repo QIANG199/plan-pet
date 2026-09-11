@@ -27,6 +27,7 @@ static uint32_t nextCheckAt = FIRST_CHECK_MS;
 static bool forced;
 static uint32_t failShownAt;
 static int lastPctShown;
+static time_t lastPushAt; /* 已响应的指令推时刻，同一值不重复触发 */
 
 /* Compile stamp as unix seconds; mktime applies the local zone (CST-8 once
  * NTP is up), matching the server's bin-mtime build number. */
@@ -144,6 +145,14 @@ void ota_loop() {
   if (failShownAt && now - failShownAt > 10000) {
     failShownAt = 0;
     ui_set_ota(nullptr);
+  }
+  /* 指令推：服务端在快照里置位就等于「现在升级」，比 6 小时自检快得多。
+   * 同一时刻只触发一次；息屏/非正常供电期间保持 pending，等条件满足再走。 */
+  time_t push = net_snapshot().otaForceAt;
+  if (push != 0 && push != lastPushAt) {
+    lastPushAt = push;
+    Serial.printf("[ota] server push at %ld\n", (long)push);
+    ota_force();
   }
   if (!forced && (int32_t)(now - nextCheckAt) < 0) return;
   /* Auto conditions: awake, normal power phase, server reachable. Manual OTA

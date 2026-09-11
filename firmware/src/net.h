@@ -18,12 +18,19 @@ struct Snapshot {
   QuotaBar autoBar;
   QuotaBar apiBar;
   time_t cycleEnd;
+  /* OpenCode Go：美元额度的三个窗口（5h / 周 / 月），页屏显 OPEN CODE */
+  bool ocOk;
+  QuotaBar ocH5;
+  QuotaBar ocWeek;
+  QuotaBar ocMonth;
   time_t srvTs;      /* server unix seconds of this snapshot */
+  time_t otaForceAt; /* 服务端置位的「立刻升级」时刻（0 = 无）；值变化才触发一次 */
   time_t petSince;   /* pet lane's last state switch, unix seconds */
   String petAgent;
   String petState;
   bool glmDot;
   bool curDot;
+  bool ocDot; /* OpenCode 页呼吸灯：opencode 最近有会话活动（服务端查会话库写入） */
   bool fresh;
 };
 

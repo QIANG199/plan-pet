@@ -11,6 +11,9 @@ extern lv_obj_t *glmTitle, *glmDot, *glmK1, *glmR1, *glmP1, *glmBar1;
 extern lv_obj_t *glmK2, *glmR2, *glmP2, *glmBar2;
 extern lv_obj_t *curTitle, *curDot, *curReset;
 extern lv_obj_t *curK1, *curP1, *curBar1, *curK2, *curP2, *curBar2;
+extern lv_obj_t *ocTitle, *ocDot, *ocK1, *ocR1, *ocP1, *ocBar1;
+extern lv_obj_t *ocK2, *ocR2, *ocP2, *ocBar2;
+extern lv_obj_t *ocK3, *ocR3, *ocP3, *ocBar3;
 
 /* Widget builders (ui_cards.cpp). */
 void ui_no_scroll(lv_obj_t *o);

@@ -158,9 +158,9 @@
 
     <!-- ═══════════════ Header ═══════════════ -->
     <div class="header">
-      <p class="header-eyebrow">PlanPet Internals · 2026-08</p>
+      <p class="header-eyebrow">PlanPet Internals · 2026-09</p>
       <h1>数据从哪来：额度、事件与桌宠动画的实现原理</h1>
-      <p class="subtitle">Z.ai 与 Cursor 都没有公开发布"套餐用量 API"。本项目借用了三个现成的东西——官方控制台自己的监控接口、本机登录态、编辑器的 hooks 扩展点。这份文档讲清每条链路怎么走，以及两个高频疑问：额度查的是谁、事件为什么会有断档。</p>
+      <p class="subtitle">Z.ai、Cursor 与 OpenCode 都没有公开发布"套餐用量 API"。本项目借用了几个现成的东西——官方控制台自己的监控接口、上游未文档化的一手用量路由、本机登录态、编辑器的 hooks 扩展点。这份文档讲清每条链路怎么走，以及两个高频疑问：额度查的是谁、事件为什么会有断档。</p>
     </div>
 
     <!-- 三种性质 summary cards -->
@@ -179,14 +179,23 @@
         <ul>
           <li>读本机 Cursor 的 SQLite（state.vscdb）取会话 Cookie</li>
           <li>替浏览器去问 cursor.com 用量页私有接口</li>
-          <li>三条链路里最脆弱：客户端升级 / 上游改版就断</li>
+          <li>额度链路里最脆弱：客户端升级 / 上游改版就断</li>
           <li>失败只影响单卡显示 fail，不牵连其他</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-dot soft"></span><h3>OpenCode Go 额度 · 未文档化一手路由</h3></div>
+        <ul>
+          <li><code>GET opencode.ai/zen/go/v1/usage</code></li>
+          <li>与推理侧共用 workspace key，但用量端点只认 <code>Bearer</code></li>
+          <li>三个美元窗口 rolling / weekly / monthly</li>
+          <li>路由未文档化、上线当天改过形态 → 逐窗口防御解析</li>
         </ul>
       </div>
       <div class="card">
         <div class="card-header"><span class="card-dot coral"></span><h3>桌宠事件 · 官方 hooks 扩展点</h3></div>
         <ul>
-          <li>Cursor / ZCode 都正式提供进程钩子机制</li>
+          <li>Cursor / ZCode / Claude Code 都正式提供进程钩子机制</li>
           <li>生命周期回调转成本地 HTTP 推送</li>
           <li>无逆向、无注入——所以远比额度链路可靠</li>
         </ul>
@@ -201,7 +210,7 @@
       <div class="diagram-container">
         <svg viewBox="0 0 1240 648" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="d1-title d1-desc">
           <title id="d1-title">PlanPet 数据链路总览</title>
-          <desc id="d1-desc">架构图：Z.ai 监控接口与 Cursor 用量接口（后者凭证读自本机 state.vscdb）每五分钟汇入中转服务的额度抓取模块；Cursor 与 ZCode 的六类 hooks 事件实时推入 pet.js 状态机；ESP32 面板秒级轮询中转服务的内存快照接口。</desc>
+          <desc id="d1-desc">架构图：Z.ai 监控接口、Cursor 用量接口（凭证读自本机 state.vscdb）与 OpenCode Go 用量路由每五分钟汇入中转服务的额度抓取模块；Cursor、ZCode 与 Claude Code 的六类 hooks 事件实时推入 pet.js 状态机；ESP32 面板秒级轮询中转服务的内存快照接口。</desc>
           <defs>
             <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
               <polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/>
@@ -312,7 +321,7 @@
           <rect x="280" y="454" width="32" height="12" rx="2" fill="transparent" stroke="rgba(122,131,153,0.40)" stroke-width="0.8"/>
           <text x="296" y="463" fill="#7a8399" font-size="7" font-family="'Geist Mono', monospace"
                 text-anchor="middle" letter-spacing="0.08em">HOOK</text>
-          <text x="364" y="482" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">ZCode 适配器 ×6 事件</text>
+          <text x="364" y="482" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">ZCode / Claude 适配器 ×6 事件</text>
           <text x="364" y="500" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">hooks/zcode-hook.js</text>
           <text x="364" y="514" fill="#7a8399" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle">~/.zcode/cli/config.json</text>
           <text x="364" y="528" fill="#7a8399" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle">PascalCase · timeoutMs 800</text>
@@ -324,9 +333,9 @@
           <text x="592" y="127" fill="#2d3142" font-size="7" font-family="'Geist Mono', monospace"
                 text-anchor="middle" letter-spacing="0.08em">PULL</text>
           <text x="684" y="150" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">额度抓取模块</text>
-          <text x="684" y="170" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">glm.js / cursor.js</text>
+          <text x="684" y="170" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">glm.js / cursor.js / opencode.js</text>
           <text x="684" y="188" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">启动 + 每 5 分钟一轮</text>
-          <text x="684" y="206" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">失败降级 ok:false · 两源互不影响</text>
+          <text x="684" y="206" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">失败降级 ok:false · 三源互不影响</text>
           <text x="684" y="222" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">结果缓存进内存</text>
 
           <!-- N7 pet.js 状态机 (FOCAL) -->
@@ -380,7 +389,7 @@
           <text x="854" y="617" fill="#4f5d75" font-size="9" font-family="'Geist', sans-serif">本地读取</text>
         </svg>
       </div>
-      <p class="caption">实线全部为本地回环或本机直连；中转服务是唯一同时接触上游与面板的角色。</p>
+      <p class="caption">实线全部为本地回环或本机直连；中转服务是唯一同时接触上游与面板的角色。图里画了 Cursor 与 ZCode 两个适配器，<strong>Claude Code 适配器与 ZCode 同构</strong>（事件名即契约名，注册在 <code>~/.claude/settings.json</code>），为免图面拥挤未单列。</p>
 
       <div class="callout-note">
         <strong>关键认识：面板不是在轮询 z.ai 或 Cursor。</strong>中转服务每 5 分钟向上游拉一次额度缓存在内存；ESP32 每秒轮询的只是这台服务的内存快照（<code>GET /api/dashboard</code>）。所以额度是<strong>分钟级</strong>新鲜度，桌宠状态才是<strong>秒级</strong>实时——两条不同频率的时钟在同一次快照里交汇。
@@ -445,15 +454,43 @@
       <p class="body-text">字段映射同样克制：<code>membershipType</code> 进卡片副标题，<code>billingCycleStart/End</code> 算账期倒计时，进度条只用 <code>individualUsage.plan.autoPercentUsed</code>（屏上 composer &amp; grok 条）和 <code>apiPercentUsed</code>（other 条）。禁止拿 used/limit 自行相除；on-demand、aggregated events 等上游一大堆结构全部不碰。</p>
 
       <div class="callout-note">
-        这是三条链路中最脆弱的一条：同时依赖客户端存储路径与非公开 Web 接口。方案探索致谢社区同类项目
+        这是额度链路中最脆弱的一条：同时依赖客户端存储路径与非公开 Web 接口。方案探索致谢社区同类项目
         <code>github.com/FreePeak/cursor-usage</code> 与
         <code>github.com/lixwen/cursor-usage-monitor</code>（完整清单见 <code>docs/credits.md</code>）。
       </div>
     </div>
 
-    <!-- ═══════════════ Section 4 · hooks → 动画映射 ═══════════════ -->
+    <!-- ═══════════════ Section 4 · OpenCode Go 额度 ═══════════════ -->
     <div class="section">
-      <p class="section-eyebrow">Section 04 · Events → Pet States</p>
+      <p class="section-eyebrow">Section 04 · OpenCode Go Quota</p>
+      <h2>OpenCode Go 额度：上游没写文档的一手用量路由</h2>
+
+      <p class="body-text">实现在 <code>server/src/opencode.js</code>。这是三份额度里唯一一条<strong>没有网页端可对照</strong>的链路：opencode 的 Go 套餐在 <code>opencode.ai/zen/go</code>，其客户端自己调 <code>GET /zen/go/v1/usage</code> 取用量。路由未文档化、也不承诺稳定，所以解析按「逐窗口防御」写（探测口径与 cc-switch 的 <code>opencode_go</code> 分支一致）。</p>
+
+      <table class="data">
+        <thead><tr><th style="width:34%">响应字段</th><th>取舍</th></tr></thead>
+        <tbody>
+          <tr><td><code>usage.rolling</code></td><td>滚动 5 小时窗（文档口径 $12 / 5h）→ 屏上第一行 <code>5h</code></td></tr>
+          <tr><td><code>usage.weekly</code></td><td>周窗（$30 / 周）→ 第二行 <code>week</code></td></tr>
+          <tr><td><code>usage.monthly</code></td><td>月窗（$60 / 月）→ 第三行 <code>month</code>；三行装不进半张卡，所以这份额度单独占额度卡第 2 页</td></tr>
+          <tr><td><code>percent</code></td><td>已用百分比，进度条与数字。兼容数字与字符串数字</td></tr>
+          <tr><td><code>resetsAt</code></td><td>重置时刻（ISO8601）→ 行内倒计时。<strong>已用 0% 时丢弃</strong>：此时上游给的是「now + 窗口时长」的占位值，当真实重置时刻会显示假倒计时</td></tr>
+          <tr><td>坏窗口 / 形态不认识</td><td>单个窗口缺字段就跳过该行、好窗口照常显示；三个窗口全都解析不出来才让整页 <code>fail</code>（该路由 2026-08-11 上线当天就改过一次形态）</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout-note">
+        <strong>用量端点的认证写法与推理侧相反。</strong>它只认 <code>Authorization: Bearer &lt;OPENCODE_GO_KEY&gt;</code>；推理侧 <code>/messages</code> 只认 <code>x-api-key</code>，两者不能互换。同一把 workspace key（Zen 与 Go 共用）打用量接口时：<strong>403 = key 有效但该 workspace 没买 Go 套餐，401 = key 本身无效</strong>——屏上都是 fail，排查方向不同。
+      </div>
+
+      <p class="body-text">Key 取自 <code>.env</code> 的 <code>OPENCODE_GO_KEY</code>（cc-switch 里 “OpenCode Go” 提供商的 <code>ANTHROPIC_AUTH_TOKEN</code>，或本机 opencode 的 <code>auth.json</code> 里的 <code>opencode-go</code>）。这一页与另外两页的区别：opencode 侧没有 hooks 适配器，不产生 thinking / happy 这类事件——它的绿点与桌宠兜底动画走「<strong>运行时在场</strong>」：中转服务 <code>server/src/opencode-runtime.js</code> 每 5 秒查一次会话库（<code>~/.local/share/opencode/opencode.db</code> 及 <code>-wal</code>，桌面版与 TUI 共用）最近 5 分钟内有无写入——桌面版是 Electron 常驻应用，进程/窗口在 ≠ 在用，只有会话活动才写库——最近有会话活动就点亮 <code>pet.dots.opencode</code>（该页屏显已更名 <code>OPEN CODE</code>），且仅在桌宠 idle 时兜底成 typing，不重置 15 分钟睡眠计时。</p>
+
+      <p class="caption">Sources: cc-switch src-tauri/src/services/coding_plan.rs（opencode_go 分支）· opencode.ai/go</p>
+    </div>
+
+    <!-- ═══════════════ Section 5 · hooks → 动画映射 ═══════════════ -->
+    <div class="section">
+      <p class="section-eyebrow">Section 05 · Events → Pet States</p>
       <h2>六个 hooks 事件如何变成六种表情</h2>
 
       <p class="body-text"><strong>先纠正一个直觉：动画状态不是从事件名逐个翻译来的。</strong>hooks 是编辑器提供的生命周期采样点，它们本身就是"全部能观测到的东西"。服务端 <code>pet.js</code> 把事件流喂进一个小型状态机，靠三类规则推导出表情：<em>进行态信号</em>（UserPromptSubmit / PreToolUse → thinking）、<em>终止信号</em>（Stop → happy 或 error；PostToolUseFailure → error）、以及<em>静默推导</em>（typing 十秒无后续自动收敛 happy 再归 idle；全局 15 分钟无声则 sleeping）。</p>
@@ -681,9 +718,9 @@
       <p class="caption">E1–E5 为普通事件（ink/muted 圆点）；Stop 为唯一终止信号（coral）。思考题答案写在下一节。</p>
     </div>
 
-    <!-- ═══════════════ Section 5 · 盲区清单 ═══════════════ -->
+    <!-- ═══════════════ Section 6 · 盲区清单 ═══════════════ -->
     <div class="section">
-      <p class="section-eyebrow">Section 05 · Blind Spots</p>
+      <p class="section-eyebrow">Section 06 · Blind Spots</p>
       <h2>"Agent 在干活，桌宠却 idle"——什么时候会发生</h2>
 
       <p class="body-text"><strong>直接回答：你的猜测部分成立，但不在最容易怀疑的地方。</strong>正常回合内的映射没有缝隙（上一节的时间线已经说明：间隙靠"busy 保持"机制覆盖，而不是靠补事件）。真正的断档来自以下五个场景，前两个占实际案例的绝大多数：</p>
@@ -713,7 +750,7 @@
           </tr>
           <tr>
             <td>⑤ 双代理择优错觉</td>
-            <td>动画同一时刻只跟一个"当前代理"：ZCode busy 时永远优先，即使 Cursor 同时也在干活</td>
+            <td>动画同一时刻只跟一个"当前代理"：ZCode busy 时永远优先，其次 Claude Code，最后 Cursor——即使多个同时也在干活</td>
             <td>不是断档而是优先级规则。各自的绿点（dots）独立点亮——看 dots 而不是动画就能同时看到两边活性</td>
           </tr>
         </tbody>
@@ -724,17 +761,18 @@
       </div>
     </div>
 
-    <!-- ═══════════════ Section 6 · 凭证边界与排查 ═══════════════ -->
+    <!-- ═══════════════ Section 7 · 凭证边界与排查 ═══════════════ -->
     <div class="section">
-      <p class="section-eyebrow">Section 06 · Credentials &amp; Troubleshooting</p>
+      <p class="section-eyebrow">Section 07 · Credentials &amp; Troubleshooting</p>
       <h2>凭证边界与断链排查</h2>
 
       <table class="data">
         <thead><tr><th style="width:30%">凭证</th><th style="width:26%">存哪</th><th>用途与归属</th></tr></thead>
         <tbody>
           <tr><td><code>ZAI_API_KEY</code></td><td><code>.env</code></td><td>你在 z.ai/bigmodel 自己账号的 API Key，monitor 接口认证</td></tr>
+          <tr><td><code>OPENCODE_GO_KEY</code></td><td><code>.env</code></td><td>OpenCode Go 套餐的 workspace key（cc-switch 的 “OpenCode Go” 提供商 / opencode 的 auth.json），用量路由走 <code>Bearer</code>；留空则该页恒 fail，不影响另外两页</td></tr>
           <tr><td>WorkosCursorSessionToken</td><td>Cursor 自己的 vscdb，<strong>只读不存</strong></td><td>本机 Cursor 登录态两段式 Cookie，usage-summary 认证</td></tr>
-          <tr><td><code>PANEL_TOKEN</code></td><td><code>.env</code> + 固件 NVS</td><td>面板↔中转服务的共享口令，与前两者完全是两类东西，文档勿混称 API Key</td></tr>
+          <tr><td><code>PANEL_TOKEN</code></td><td><code>.env</code> + 固件 NVS</td><td>面板↔中转服务的共享口令，与前三者完全是两类东西，文档勿混称 API Key</td></tr>
         </tbody>
       </table>
       <p class="body-text">全程只读取你自己账号的数据、用你自己的凭证；无加密绕过、无第三方凭据参与、无批量抓取行为。</p>
@@ -744,6 +782,8 @@
         <tbody>
           <tr><td>GLM 卡 fail</td><td>.env 的 ZAI_API_KEY 是否有效 → <code>curl -H "Authorization: $ZAI_API_KEY" https://api.z.ai/api/monitor/usage/quota/limit</code> 看原始返回；切过国内套餐的先回到第二节核对域名错位问题</td></tr>
           <tr><td>Cursor 卡 fail</td><td>确认 Cursor 本机已登录且 vscdb 存在 → 上游接口或 Cookie 格式可能变了，对照设计方案 §4.2 重新抓包验证</td></tr>
+          <tr><td>OPEN CODE 页 fail</td><td><code>.env</code> 是否填了 <code>OPENCODE_GO_KEY</code> → <code>curl -H "Authorization: Bearer $OPENCODE_GO_KEY" https://opencode.ai/zen/go/v1/usage</code>：403 是这把 key 的 workspace 没买 Go 套餐（换 cc-switch 里在用的那把），401 是 key 写错 → 上游改过路由形态的话看服务日志的 <code>[opencode] fail</code> 原文</td></tr>
+          <tr><td>OPEN CODE 页呼吸灯不亮</td><td>先看任务管理器里 opencode 进程名是否以 <code>opencode</code> 开头（服务端按镜像名匹配）→ 服务日志有无 <code>[opencode] runtime up</code> → 桌宠 sleeping 时呼吸灯本来就熄（存在性不是事件，不唤醒面板）</td></tr>
           <tr><td>桌宠不动但卡正常</td><td><code>node hooks/install.js status</code> → 确认 <code>npm start</code> 在跑 → 看服务日志有无 /api/event 流量</td></tr>
           <tr><td>全都不动</td><td>中转服务本身挂了：端口占用会直接退出（EADDRINUSE），防火墙未放行 TCP 3737 则面板连不上</td></tr>
         </tbody>
@@ -753,7 +793,7 @@
     <!-- Footer -->
     <div class="footer">
       <span>PlanPet · 数据来源与实现原理 · 本页替代原 data-sources.md（图表版）</span>
-      <span>术语见 CONTEXT.md · 接口契约见 design/01-设计方案.md §4–5 · 2026-08</span>
+      <span>术语见 CONTEXT.md · 接口契约见 design/01-设计方案.md §4–5 · 2026-09</span>
     </div>
 
   </div>

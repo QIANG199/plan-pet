@@ -3,7 +3,7 @@ const assert = require("node:assert");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const { otaInfo } = require("../src/ota");
+const { otaInfo, armPush, clearPush, pushState } = require("../src/ota");
 
 test("otaInfo maps mtime to build seconds and reports size", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ota-"));
@@ -23,4 +23,17 @@ test("otaInfo reports ok=false for missing files and directories", () => {
     ok: false,
   });
   assert.deepEqual(otaInfo(os.tmpdir()), { ok: false });
+});
+
+test("push flag is armed on demand and survives until the bin is served", () => {
+  clearPush();
+  assert.equal(pushState(), null);
+  const at = armPush();
+  assert.equal(typeof at, "number");
+  assert.equal(pushState(), at);
+  /* 再次置位取新时刻：固件按「值变化」只触发一次 */
+  const later = armPush();
+  assert.equal(pushState(), later);
+  clearPush();
+  assert.equal(pushState(), null);
 });

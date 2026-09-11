@@ -45,6 +45,7 @@ static void parseDash(const String &body) {
 
   snap.srvTs = (time_t)(doc["ts"] | 0);
   snap.petSince = (time_t)(doc["pet"]["since"] | 0);
+  snap.otaForceAt = (time_t)(doc["ota"]["forceAt"] | 0);
 
   JsonObject glm = doc["glm"];
   snap.glmOk = glm["ok"] | false;
@@ -68,10 +69,29 @@ static void parseDash(const String &body) {
   if (snap.apiBar.present) snap.apiBar.pct = cur["api"]["pct"] | 0;
   snap.cycleEnd = (time_t)(cur["cycleEnd"] | 0);
 
+  JsonObject oc = doc["opencodeGo"];
+  snap.ocOk = oc["ok"] | false;
+  snap.ocH5.present = snap.ocOk && !oc["h5"].isNull();
+  if (snap.ocH5.present) {
+    snap.ocH5.pct = oc["h5"]["pct"] | 0;
+    snap.ocH5.resetAt = (time_t)(oc["h5"]["nextResetAt"] | 0); /* 0% 无重置时刻 */
+  }
+  snap.ocWeek.present = snap.ocOk && !oc["week"].isNull();
+  if (snap.ocWeek.present) {
+    snap.ocWeek.pct = oc["week"]["pct"] | 0;
+    snap.ocWeek.resetAt = (time_t)(oc["week"]["nextResetAt"] | 0);
+  }
+  snap.ocMonth.present = snap.ocOk && !oc["month"].isNull();
+  if (snap.ocMonth.present) {
+    snap.ocMonth.pct = oc["month"]["pct"] | 0;
+    snap.ocMonth.resetAt = (time_t)(oc["month"]["nextResetAt"] | 0);
+  }
+
   snap.petAgent = doc["pet"]["agent"] | "";
   snap.petState = doc["pet"]["state"] | "idle";
   snap.glmDot = doc["pet"]["dots"]["zcode"] | false;
   snap.curDot = doc["pet"]["dots"]["cursor"] | false;
+  snap.ocDot = doc["pet"]["dots"]["opencode"] | false;
   snap.fresh = true;
   lastOkMs = millis();
 }
